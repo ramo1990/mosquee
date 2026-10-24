@@ -30,6 +30,8 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",") 
 
+AUTH_USER_MODEL = "accounts.User"
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -42,6 +44,17 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
+    "channels",
+    "django_extensions",
+
+    # Apps
+    "accounts",
+    "announcements",
+    "prayer_times",
+    "events",
+    "screens",
+    "donations",
+    "content",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -61,6 +74,24 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ],
+    "DEFAULT_PAGINATION_CLASS":
+        "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+}
 
 TEMPLATES = [
     {
@@ -126,3 +157,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
