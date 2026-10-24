@@ -1,7 +1,33 @@
+
+# Secrets et variables d'environnement
 .env
 .env.*
+!.env.example
+
+# Python / Django
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ENV/
+*.log
+db.sqlite3
+staticfiles/
+
+# Node.js
+node_modules/
+
+# Next.js
 .next/
 out/
+build/
+
+# Logs npm / yarn / pnpm
 npm-debug.log*
+yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
+
+# Système
 .DS_Store
+Thumbs.db
