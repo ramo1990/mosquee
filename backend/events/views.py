@@ -37,18 +37,25 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["list", "retrieve", "upcoming", "register"]:
             return [AllowAny()]
+
         return super().get_permissions()
 
     @action(
         detail=False,
         methods=["get"],
+        permission_classes=[AllowAny],
         url_path="upcoming",
     )
     def upcoming(self, request):
-        queryset = self.get_queryset().filter(
-            starts_at__gte=timezone.now(),
-            status=Event.Status.PUBLISHED,
+        queryset = (
+            self.get_queryset()
+            .filter(
+                starts_at__gte=timezone.now(),
+                status=Event.Status.PUBLISHED,
+            )
+            .order_by("starts_at")
         )
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 

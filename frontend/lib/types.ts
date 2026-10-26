@@ -27,6 +27,15 @@ export type PrayerTime = {
   jumuah_khateeb: string | null;
 };
 
+export type QuranVerse = {
+  id: number;
+  arabic: string;
+  translation: string;
+  reference: string;
+  is_active: boolean;
+  order: number;
+};
+
 export type Event = {
   id: number;
   title: string;

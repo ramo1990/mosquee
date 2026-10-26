@@ -1,9 +1,11 @@
 # announcements/views.py
 from django.utils import timezone
+from screens.models import Screen
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
 from config.permissions import IsMosqueStaff
 from .models import Announcement
@@ -64,20 +66,26 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         permission_classes=[AllowAny],
-        url_path="screen",
+        url_path=r"screen/(?P<screen_id>\d+)",
     )
-    def screen_list(self, request):
+    def screen_list(self, request, screen_id=None):
         now = timezone.now()
-        queryset = Announcement.objects.filter(
-            is_active=True,
-            show_on_screen=True,
-            starts_at__lte=now,
-        ).filter(
-            models_q_ends_at_null_or_future(now)
-        ).order_by("-priority", "-created_at")
+        screen = get_object_or_404(Screen, id=screen_id)
+
+        announcements = [
+            announcement
+            for announcement in Announcement.objects.filter(
+                is_active=True,
+                show_on_screen=True,
+                starts_at__lte=now,
+            ).filter(
+                Q(ends_at__isnull=True) | Q(ends_at__gte=now)
+            ).order_by("-priority", "-created_at")
+            if announcement.is_visible_for_screen(screen)
+        ]
 
         serializer = PublicAnnouncementSerializer(
-            queryset,
+            announcements,
             many=True,
             context={"request": request},
         )

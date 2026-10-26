@@ -1,5 +1,12 @@
-// src/lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8004/api";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8004/api";
+
+type PaginatedResponse<T> = {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
+  results?: T[];
+};
 
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -13,6 +20,16 @@ export async function apiGet<T>(path: string): Promise<T> {
   return res.json();
 }
 
+export async function apiGetList<T>(path: string): Promise<T[]> {
+  const data = await apiGet<T[] | PaginatedResponse<T>>(path);
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return data.results ?? [];
+}
+
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
@@ -22,11 +39,20 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
 
-  const data = await res.json();
+  let data: unknown = null;
 
-  if (!res.ok) {
-    throw new Error(data?.detail ?? "Une erreur est survenue.");
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
   }
 
-  return data;
+  if (!res.ok) {
+    const errorData = data as { detail?: string } | null;
+    throw new Error(
+      errorData?.detail ?? "Une erreur est survenue."
+    );
+  }
+
+  return data as T;
 }

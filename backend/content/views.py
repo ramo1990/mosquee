@@ -89,10 +89,32 @@ class QuranVerseViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         permission_classes=[AllowAny],
+        url_path="screen",
+    )
+    def screen_list(self, request):
+        verses = (
+            QuranVerse.objects
+            .filter(is_active=True)
+            .order_by("order")
+        )
+
+        serializer = self.get_serializer(verses, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[AllowAny],
         url_path="random",
     )
     def random_verse(self, request):
-        verse = QuranVerse.objects.filter(is_active=True).order_by("?").first()
+        verse = (
+            QuranVerse.objects
+            .filter(is_active=True)
+            .order_by("?")
+            .first()
+        )
+
         serializer = self.get_serializer(verse)
         return Response(serializer.data)
 

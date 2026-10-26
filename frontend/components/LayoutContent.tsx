@@ -1,13 +1,13 @@
 
 "use client";
 
+import { Suspense, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-export default function LayoutContent({
+function LayoutContentInner({
   children,
 }: Readonly<{
   children: ReactNode;
@@ -16,7 +16,7 @@ export default function LayoutContent({
   const isEcranPage = pathname === "/ecran";
 
   return (
-    <body className="flex min-h-screen flex-col bg-gray-50 text-gray-900 antialiased">
+    <>
       {!isEcranPage && (
         <a
           href="#main-content"
@@ -38,6 +38,20 @@ export default function LayoutContent({
       </main>
 
       {!isEcranPage && <Footer />}
-    </body>
+    </>
+  );
+}
+
+export default function LayoutContent({
+  children,
+}: Readonly<{
+  children: ReactNode;
+}>) {
+  return (
+    <Suspense
+      fallback={<div className="min-h-screen flex-1 bg-gray-50" />}
+    >
+      <LayoutContentInner>{children}</LayoutContentInner>
+    </Suspense>
   );
 }

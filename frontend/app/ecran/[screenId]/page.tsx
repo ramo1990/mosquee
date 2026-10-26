@@ -1,9 +1,31 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
-import type { Announcement, PrayerTime } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiGet, apiGetList } from "@/lib/api";
+import type { Announcement, PrayerTime, QuranVerse, Event } from "@/lib/types";
+import { useScreenSocket } from "@/lib/useScreenSocket";
+import { useParams } from "next/navigation";
+
+
+type ScreenSlide =
+  | {
+      type: "announcement";
+      data: Announcement;
+    }
+  | {
+      type: "verse";
+      arabic: string;
+      translation: string;
+      reference: string;
+    }
+  | {
+      type: "event";
+      title: string;
+      description: string;
+      starts_at: string;
+      location: string | null;
+    };
 
 const TIME_ZONE = "Africa/Abidjan";
 const DATA_REFRESH_INTERVAL = 60_000;
@@ -175,22 +197,11 @@ function formatCountdown(milliseconds: number) {
     .join(":");
 }
 
-
-function LoadingMessage({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      role="status"
-      className="flex min-h-32 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-lg text-gray-400"
-    >
-      {children}
-    </div>
-  );
-}
-
 export default function MosqueScreenPage() {
+  const params = useParams();
+  const screenId = Number(params.screenId);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [prayerTime, setPrayerTime] = useState<PrayerTime | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
 
   const [announcementsLoaded, setAnnouncementsLoaded] = useState(false);
@@ -203,21 +214,58 @@ export default function MosqueScreenPage() {
   const shuruqTime = prayerTime?.sunrise?.slice(0, 5) ?? "--:--";
   const jumuahTime = prayerTime?.jumuah_time?.slice(0, 5) ?? "--:--";
 
+  const [verses, setVerses] = useState<QuranVerse[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [versesLoaded, setVersesLoaded] = useState(false);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  const slides = useMemo<ScreenSlide[]>(() => {
+    const result: ScreenSlide[] = [];
+
+    announcements.forEach((announcement) => {
+      result.push({ type: "announcement", data: announcement });
+    });
+
+    verses.forEach((verse) => {
+      result.push({
+        type: "verse",
+        arabic: verse.arabic,
+        translation: verse.translation,
+        reference: verse.reference,
+      });
+    });
+
+    events.slice(0, 3).forEach((event) => {
+      result.push({
+        type: "event",
+        title: event.title,
+        description: event.description,
+        starts_at: event.starts_at,
+        location: event.location,
+      });
+    });
+
+    return result;
+  }, [announcements, verses, events]);
+
   const loadData = useCallback(async () => {
-    const [announcementsResult, prayersResult] = await Promise.allSettled([
-      apiGet<Announcement[]>("/annonces/screen/"),
+    const [
+      announcementsResult,
+      prayersResult,
+      versesResult,
+      eventsResult,
+    ] = await Promise.allSettled([
+      apiGetList<Announcement>(`/annonces/screen/${screenId}/`),
       apiGet<PrayerTime>("/horaires-prieres/today/"),
+      apiGetList<QuranVerse>("/versets/screen/"),
+      apiGetList<Event>("/evenements/upcoming/"),
     ]);
 
     if (announcementsResult.status === "fulfilled") {
       const nextAnnouncements = announcementsResult.value;
 
       setAnnouncements(nextAnnouncements);
-      setCurrentIndex((index) =>
-        nextAnnouncements.length > 0
-          ? index % nextAnnouncements.length
-          : 0
-      );
       setAnnouncementsError(false);
     } else {
       setAnnouncementsError(true);
@@ -233,7 +281,23 @@ export default function MosqueScreenPage() {
     }
 
     setPrayersLoaded(true);
-  }, []);
+
+    if (versesResult.status === "fulfilled") {
+      setVerses(
+        versesResult.value.filter((verse) => verse.is_active)
+      );
+      setVersesLoaded(true);
+    }
+
+    if (eventsResult.status === "fulfilled") {
+      setEvents(eventsResult.value);
+      setEventsLoaded(true);
+    }
+  }, [screenId]);
+
+  const { connected } = useScreenSocket(screenId, () => {
+    void loadData();
+  });
 
   // Horloge et actualisation des données.
   useEffect(() => {
@@ -278,36 +342,44 @@ export default function MosqueScreenPage() {
 
   // Rotation automatique des annonces.
   useEffect(() => {
-    if (announcements.length <= 1) return;
+    if (slides.length <= 1) return;
 
     const interval = window.setInterval(() => {
-      setCurrentIndex((index) => (index + 1) % announcements.length);
+      setSlideIndex((index) => (index + 1) % slides.length);
     }, ANNOUNCEMENT_DURATION);
 
     return () => window.clearInterval(interval);
-  }, [announcements.length]);
+  }, [slides.length]);
 
-  const currentAnnouncement =
-    announcements.length > 0
-      ? announcements[currentIndex % announcements.length]
-      : undefined;
+  const safeSlideIndex = slides.length > 0 ? slideIndex % slides.length : 0;
+  const currentSlide = slides[safeSlideIndex];
 
-  const isUrgent = currentAnnouncement?.priority === "high";
+  const isUrgent =
+    currentSlide?.type === "announcement" &&
+    currentSlide.data.priority === "high";
 
   return (
-    <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#07110e] px-[clamp(0.5rem,2vw,2rem)] py-[clamp(0.5rem,1vh,1rem)] text-white">
+    <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#07110e] px-[clamp(0.5rem,2vw,2rem)] py-2 text-white">
       {/* En-tête et horloge */}
-      <header className="flex flex-col gap-5 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 border-b border-white/10 pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-bold ${
+            connected ? "bg-emerald-600" : "bg-red-600"
+          }`}
+        >
+          {connected ? "EN LIGNE" : "HORS LIGNE"}
+        </span>
+
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-emerald-400 sm:text-sm">
             Côte d’Ivoire
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
             Mosquée<span className="text-amber-400">.</span>
           </h1>
 
-          <p className="mt-2 text-sm capitalize text-gray-400 sm:text-base">
+          <p className="mt-1 text-sm capitalize text-gray-400 sm:text-base">
             {getDate(now)}
           </p>
         </div>
@@ -318,21 +390,17 @@ export default function MosqueScreenPage() {
           </p>
 
           <time
-            className="mt-1 block text-4xl font-bold tabular-nums tracking-tight text-emerald-300 sm:text-5xl lg:text-6xl"
+            className="mt-0 block text-4xl font-bold tabular-nums tracking-tight text-emerald-300 sm:text-5xl lg:text-6xl"
             suppressHydrationWarning
           >
             {getClock(now)}
           </time>
-
-          {/* <p className="mt-1 text-xs text-gray-500">
-            Africa/Abidjan · GMT
-          </p> */}
         </div>
       </header>
 
       
       {/* Shuruq · Prochaine prière · Jumua */}
-      <section className="mt-[clamp(1rem,2vh,2rem)] grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)_minmax(0,0.85fr)] items-baseline-last gap-[clamp(0.75rem,1.5vw,2rem)]">
+      <section className="grid shrink-0 grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)_minmax(0,0.85fr)] items-center gap-[clamp(0.5rem,1.5vw,2rem)]">
 
         {/* SHURUQ à gauche */}
         <article className="flex min-w-0 flex-col items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-950/60 px-4 py-5 text-center">
@@ -350,7 +418,7 @@ export default function MosqueScreenPage() {
         </article>
 
         {/* PROCHAINE PRIÈRE au centre */}
-        <article className="flex min-w-0 flex-col items-center justify-center rounded-3xl border-2 border-amber-400/40 bg-gradient-to-br from-emerald-800 to-emerald-950 px-8 py-10 text-center shadow-xl">
+        <article className="flex min-w-0 flex-col items-center justify-center rounded-3xl border-2 border-amber-400/40 bg-linear-to-br from-emerald-800 to-emerald-950 px-4 py-4 text-center shadow-xl">
           <p className="text-xl font-bold uppercase tracking-[0.25em] text-amber-300">
             PROCHAINE PRIÈRE
           </p>
@@ -409,13 +477,98 @@ export default function MosqueScreenPage() {
 
       </section>
 
+      
+      {/* Horaires des prières du jour — compact */}
+      <section
+        aria-labelledby="prayer-times-heading"
+        className="mt-2 shrink-0"
+      >
+        <h2
+          id="prayer-times-heading"
+          className="mb-1 text-center text-sm font-bold uppercase tracking-wider text-emerald-300"
+        >
+          Horaires des prières du jour
+        </h2>
+
+        <div className="grid grid-cols-5 gap-2">
+          {prayers.map((prayer) => {
+            const time = getPrayerTime(prayerTime, prayer.key);
+
+            const iqamaKey = `${prayer.key}_iqama` as
+              | "fajr_iqama"
+              | "dhuhr_iqama"
+              | "asr_iqama"
+              | "maghrib_iqama"
+              | "isha_iqama";
+
+            const iqama = prayerTime?.[iqamaKey]?.slice(0, 5) ?? "--:--";
+            const isNext = nextPrayer?.label === prayer.label;
+
+            return (
+              <article
+                key={prayer.key}
+                className={`flex min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-1.5 text-center ${
+                  isNext
+                    ? "border-amber-400 bg-amber-400/10"
+                    : "border-white/10 bg-white/3"
+                }`}
+              >
+                <p className="text-xs font-bold text-gray-200 sm:text-sm">
+                  {prayer.label}
+                </p>
+
+                <p
+                  lang="ar"
+                  dir="rtl"
+                  className="text-xs text-emerald-300"
+                >
+                  {prayer.arabic}
+                </p>
+
+                <p className="mt-1 text-[10px] text-gray-500">
+                  ADHAN
+                </p>
+                <p
+                  className={`text-lg font-extrabold leading-tight tabular-nums sm:text-xl ${
+                    isNext ? "text-amber-300" : "text-white"
+                  }`}
+                >
+                  {time}
+                </p>
+
+                <div className="my-1 h-px w-3/4 bg-white/10" />
+
+                <p className="text-[10px] text-gray-500">
+                  IQAMA
+                </p>
+                <p className="text-sm font-bold leading-tight tabular-nums text-emerald-300 sm:text-base">
+                  {iqama}
+                </p>
+
+                {isNext && (
+                  <span className="mt-0.5 text-[9px] font-bold uppercase text-amber-300">
+                    Prochaine
+                  </span>
+                )}
+              </article>
+            );
+          })}
+        </div>
+
+        {prayersError && (
+          <p className="mt-1 text-center text-xs text-red-400">
+            Impossible de récupérer les horaires des prières.
+          </p>
+        )}
+      </section>
+
 
       {/* Annonces */}
       <section
         aria-labelledby="announcements-heading"
-        className="mt-[clamp(0.5rem,1vh,1rem)] flex min-h-0 flex-1 flex-col"
+        className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="mb-[clamp(0.5rem,1vh,1rem)] flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <div className="mb-1 flex shrink-0 flex-wrap items-center justify-between gap-2">
           <div>
             <h2
               id="announcements-heading"
@@ -425,12 +578,12 @@ export default function MosqueScreenPage() {
             </h2>
           </div>
 
-          {announcements.length > 0 && (
+          {slides.length > 0 && (
             <p
               className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm tabular-nums text-gray-300"
-              aria-label={`Annonce ${currentIndex + 1} sur ${announcements.length}`}
+              aria-label={`Diapositive ${slideIndex + 1} sur ${slides.length}`}
             >
-              {currentIndex + 1} / {announcements.length}
+              {safeSlideIndex + 1} / {slides.length}
             </p>
           )}
         </div>
@@ -439,10 +592,10 @@ export default function MosqueScreenPage() {
         <div
           aria-live="polite"
           aria-atomic="true"
-          className={`relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden rounded-3xl border p-[clamp(0.75rem,1.5vw,2rem)] ${
+          className={`relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden rounded-2xl border p-[clamp(0.4rem,0.8vw,1rem)] ${
             isUrgent
-              ? "border-red-500/40 bg-gradient-to-br from-red-950 via-red-950 to-[#210b0b]"
-              : "border-emerald-500/20 bg-gradient-to-br from-[#10271f] to-[#0b1914]"
+              ? "border-red-500/40 bg-linear-to-br from-red-950 via-red-950 to-[#210b0b]"
+              : "border-emerald-500/20 bg-linear-to-br from-[#10271f] to-[#0b1914]"
           }`}
         >
           {isUrgent && (
@@ -452,9 +605,9 @@ export default function MosqueScreenPage() {
             />
           )}
 
-          {currentAnnouncement ? (
+          {currentSlide?.type === "announcement" ? (
             <article
-              key={currentAnnouncement.id}
+              key={`announcement-${currentSlide.data.id}`}
               className="mx-auto w-full max-w-7xl animate-in fade-in duration-500"
             >
               {isUrgent && (
@@ -467,20 +620,62 @@ export default function MosqueScreenPage() {
                 </span>
               )}
 
-              <h3 className="break-words text-[clamp(1.1rem,2.2vw,2.8rem)] font-bold leading-tight tracking-tight">
-                {currentAnnouncement.title}
+              <h3 className="wrap-break-word text-[clamp(1.1rem,2.2vw,2.8rem)] font-bold leading-tight tracking-tight">
+                {currentSlide.data.title}
               </h3>
 
-              <p className="mt-[clamp(0.4rem,1vh,0.9rem)] whitespace-pre-line break-words text-[clamp(0.9rem,1.35vw,1.65rem)] leading-snug text-gray-200">
-                {currentAnnouncement.body}
+              <p className="mt-2 whitespace-pre-line wrap-break-word text-[clamp(0.9rem,1.35vw,1.65rem)] leading-snug text-gray-200">
+                {currentSlide.data.body}
               </p>
             </article>
-          ) : !announcementsLoaded ? (
-            <div className="py-4 text-center">
-              <p className="text-[clamp(1rem,1.5vw,1.5rem)] text-gray-300">
-                Chargement des annonces...
+          ) : currentSlide?.type === "verse" ? (
+            <article
+              key={`verse-${currentSlide.reference}`}
+              className="mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center text-center animate-in fade-in duration-500"
+            >
+              <p
+                dir="rtl"
+                lang="ar"
+                className="text-[clamp(1.4rem,2.8vw,3.5rem)] leading-snug text-emerald-300"
+              >
+                {currentSlide.arabic}
               </p>
-            </div>
+
+              <p className="mt-3 max-w-6xl text-[clamp(0.9rem,1.3vw,1.6rem)] leading-snug text-gray-200">
+                {currentSlide.translation}
+              </p>
+
+              <p className="mt-2 text-[clamp(0.75rem,0.9vw,1rem)] text-gray-500">
+                {currentSlide.reference}
+              </p>
+            </article>
+          ) : currentSlide?.type === "event" ? (
+            <article
+              key={`event-${currentSlide.title}`}
+              className="mx-auto w-full max-w-7xl animate-in fade-in duration-500"
+            >
+              <span className="mb-2 inline-block rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold sm:text-sm">
+                ÉVÉNEMENT
+              </span>
+
+              <h3 className="wrap-break-word text-[clamp(1.1rem,2.2vw,2.5rem)] font-bold leading-tight">
+                {currentSlide.title}
+              </h3>
+
+              <p className="mt-2 text-[clamp(0.85rem,1.2vw,1.5rem)] text-emerald-300">
+                {new Date(currentSlide.starts_at).toLocaleString("fr-FR")}
+              </p>
+
+              {currentSlide.location && (
+                <p className="mt-1 text-[clamp(0.8rem,1vw,1.2rem)] text-gray-400">
+                  {currentSlide.location}
+                </p>
+              )}
+
+              <p className="mt-2 whitespace-pre-line text-[clamp(0.85rem,1.2vw,1.5rem)] leading-snug text-gray-200">
+                {currentSlide.description}
+              </p>
+            </article>
           ) : announcementsError ? (
             <div className="py-4 text-center">
               <h3 className="text-[clamp(1rem,1.5vw,1.5rem)] font-semibold text-gray-200">
@@ -490,27 +685,33 @@ export default function MosqueScreenPage() {
                 Une nouvelle tentative sera effectuée automatiquement.
               </p>
             </div>
+          ) : !announcementsLoaded && !versesLoaded && !eventsLoaded ? (
+            <div className="py-4 text-center">
+              <p className="text-[clamp(1rem,1.5vw,1.5rem)] text-gray-300">
+                Chargement des informations...
+              </p>
+            </div>
           ) : (
             <div className="py-4 text-center">
               <p className="text-[clamp(1.2rem,2vw,2rem)] font-semibold text-gray-200">
-                Aucune annonce pour le moment
+                Aucune information pour le moment
               </p>
               <p className="mt-2 text-sm text-gray-400">
-                Les prochaines informations apparaîtront ici.
+                Les annonces, versets et événements apparaîtront ici.
               </p>
             </div>
           )}
 
-          {announcements.length > 1 && (
+          {slides.length > 1 && (
             <div
               className="mt-[clamp(0.5rem,1vh,1rem)] flex shrink-0 items-center justify-center gap-2"
               aria-hidden="true"
             >
-              {announcements.slice(0, 12).map((announcement, index) => (
+              {slides.slice(0, 12).map((slide, index) => (
                 <span
-                  key={announcement.id}
+                  key={index}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === currentIndex
+                    index === safeSlideIndex
                       ? "w-8 bg-emerald-400"
                       : "w-2 bg-white/20"
                   }`}
@@ -522,10 +723,10 @@ export default function MosqueScreenPage() {
 
       </section>
 
-      {/* Pied d'écran */}
-      <footer className="mt-2 flex shrink-0 flex-col items-center justify-between gap-1 border-t border-white/10 pt-2 text-[clamp(0.65rem,0.8vw,0.8rem)] text-gray-500 sm:flex-row">
+      {/* Pied d'écran : toujours visible en bas */}
+      <footer className="relative z-10 mt-1 flex h-10 min-h-10 shrink-0 flex-row items-center justify-between gap-2 border-t border-white/10 bg-[#07110e] px-1 text-[clamp(0.65rem,0.8vw,0.8rem)] text-gray-400">
         <p>Foi · Paix · Fraternité</p>
-        <p>Qu’Allah bénisse notre communauté.</p>
+        <p className="text-right">Qu’Allah bénisse notre communauté.</p>
       </footer>
     </main>
   );

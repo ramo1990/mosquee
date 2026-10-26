@@ -6,12 +6,37 @@ from django.db import models
 from django.utils import timezone
 
 
+class ScreenGroup(models.Model):
+    name = models.CharField("nom du groupe", max_length=150, unique=True)
+    description = models.TextField(
+        "description",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "groupe d’écrans"
+        verbose_name_plural = "groupes d’écrans"
+
+    def __str__(self):
+        return self.name
+    
 class Screen(models.Model):
     name = models.CharField("nom", max_length=100)
     location = models.CharField(
         "emplacement",
         max_length=150,
         help_text="Ex : entrée principale, salle de prière, cour.",
+    )
+    group = models.ForeignKey(
+        ScreenGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="screens",
+        verbose_name="groupe d’écrans",
     )
     pairing_code = models.UUIDField(
         "code d’appairage",

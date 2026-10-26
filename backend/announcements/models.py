@@ -6,11 +6,39 @@ from django.utils import timezone
 from django.conf import settings
 
 
+class AnnouncementTarget(models.TextChoices):
+    ALL = "all", "Tous les écrans"
+    GROUP = "group", "Groupe d’écrans"
+    SCREEN = "screen", "Écran précis"
+
 class Announcement(models.Model):
     class Priority(models.TextChoices):
         LOW = "low", "Basse"
         NORMAL = "normal", "Normale"
         HIGH = "high", "Urgente"
+
+    target_type = models.CharField(
+        "cible",
+        max_length=10,
+        choices=AnnouncementTarget.choices,
+        default=AnnouncementTarget.ALL,
+    )
+    target_group = models.ForeignKey(
+        "screens.ScreenGroup",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcements",
+        verbose_name="groupe ciblé",
+    )
+    target_screen = models.ForeignKey(
+        "screens.Screen",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcements",
+        verbose_name="écran ciblé",
+    )
 
     title = models.CharField("titre", max_length=200)
     body = models.TextField("contenu")
@@ -40,6 +68,18 @@ class Announcement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def is_visible_for_screen(self, screen: "Screen") -> bool:
+        if self.target_type == AnnouncementTarget.ALL:
+            return True
+
+        if self.target_type == AnnouncementTarget.GROUP:
+            return screen.group_id == self.target_group_id
+
+        if self.target_type == AnnouncementTarget.SCREEN:
+            return screen.id == self.target_screen_id
+
+        return False
+    
     class Meta:
         verbose_name = "annonce"
         verbose_name_plural = "annonces"
