@@ -1,6 +1,6 @@
-# prayer_times/views.py
+
 from django.utils import timezone
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -27,15 +27,28 @@ class DailyPrayerTimeViewSet(viewsets.ModelViewSet):
         url_path="today",
     )
     def today(self, request):
-        prayer_time = DailyPrayerTime.objects.filter(
-            date=timezone.localdate(),
-        ).first()
+        today = timezone.localdate()
 
-        if not prayer_time:
-            return Response({"detail": "Aucun horaire disponible pour aujourd’hui."})
+        prayer_time = (
+            DailyPrayerTime.objects
+            .filter(date__lte=today)
+            .order_by("-date")
+            .first()
+        )
+
+        if prayer_time is None:
+            return Response(
+                {
+                    "detail": (
+                        "Aucun horaire de prière disponible "
+                        "pour aujourd’hui."
+                    )
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = self.get_serializer(prayer_time)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class RamadanScheduleViewSet(viewsets.ModelViewSet):
