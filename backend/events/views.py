@@ -4,9 +4,12 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from screens.models import Screen
 
 from config.permissions import IsMosqueStaff
-from .models import Event, EventCategory, EventRegistration
+from .models import Event, EventCategory, EventRegistration, EventTarget
 from .serializers import (
     EventCategorySerializer,
     EventRegistrationSerializer,
@@ -44,14 +47,26 @@ class EventViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         permission_classes=[AllowAny],
-        url_path="upcoming",
+        url_path=r"upcoming/(?P<screen_slug>[-\w]+)",
     )
-    def upcoming(self, request):
+    def upcoming(self, request, screen_slug=None):
+        now = timezone.now()
+
+        screen = get_object_or_404(
+            Screen,
+            slug=screen_slug,
+            is_active=True,
+        )
+
         queryset = (
             self.get_queryset()
             .filter(
-                starts_at__gte=timezone.now(),
+                starts_at__gte=now,
                 status=Event.Status.PUBLISHED,
+            )
+            .filter(
+                Q(target_type=EventTarget.ALL)
+                | Q(target_screens=screen)
             )
             .order_by("starts_at")
         )

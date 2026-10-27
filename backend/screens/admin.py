@@ -1,52 +1,70 @@
-# screens/admin.py
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Screen, ScreenContent
+from .models import Screen, ScreenContent, ScreenGroup
+
+
+@admin.register(ScreenGroup)
+class ScreenGroupAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "screens_count",
+        "created_at",
+    )
+    search_fields = ("name", "description")
+    readonly_fields = ("created_at", "updated_at")
+
+    @admin.display(description="Écrans")
+    def screens_count(self, obj):
+        return obj.screens.count()
 
 
 class ScreenContentInline(admin.TabularInline):
     model = ScreenContent
-    extra = 1
+    extra = 0
     fields = (
         "title",
         "body",
         "image",
-        "image_preview",
         "order",
         "is_active",
     )
-    readonly_fields = ("image_preview",)
-
-    @admin.display(description="Aperçu")
-    def image_preview(self, obj):
-        if obj and obj.image:
-            return format_html(
-                '<img src="{}" style="height:50px;border-radius:6px;" />',
-                obj.image.url,
-            )
-        return "—"
 
 
 @admin.register(Screen)
 class ScreenAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "slug",
         "location",
+        "group",
+        "screen_url",
         "is_online",
         "last_seen_at",
         "announcement_duration",
         "verse_duration",
     )
-    list_filter = ("is_online", "location")
-    search_fields = ("name", "location", "pairing_code")
+    list_filter = (
+        "group",
+        "is_online",
+        "location",
+    )
+    search_fields = (
+        "name",
+        "slug",
+        "location",
+        "pairing_code",
+    )
+    prepopulated_fields = {"slug": ("name",)}
     readonly_fields = (
         "pairing_code",
         "last_seen_at",
         "created_at",
         "updated_at",
+        "screen_url",
     )
     inlines = [ScreenContentInline]
+    list_per_page = 25
 
     fieldsets = (
         (
@@ -54,8 +72,11 @@ class ScreenAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "name",
+                    "slug",
                     "location",
+                    "group",
                     "pairing_code",
+                    "screen_url",
                 )
             },
         ),
@@ -90,6 +111,16 @@ class ScreenAdmin(admin.ModelAdmin):
         ),
     )
 
+    @admin.display(description="URL de l’écran")
+    def screen_url(self, obj):
+        url = f"http://localhost:3004/ecran/{obj.id}"
+
+        return format_html(
+            '<a href="{}" target="_blank">{}</a>',
+            url,
+            url,
+        )
+
 
 @admin.register(ScreenContent)
 class ScreenContentAdmin(admin.ModelAdmin):
@@ -99,5 +130,8 @@ class ScreenContentAdmin(admin.ModelAdmin):
         "order",
         "is_active",
     )
-    list_filter = ("screen", "is_active")
+    list_filter = (
+        "screen",
+        "is_active",
+    )
     search_fields = ("title", "body")

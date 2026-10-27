@@ -68,7 +68,7 @@ class Announcement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def is_visible_for_screen(self, screen: "Screen") -> bool:
+    def is_visible_for_screen(self, screen) -> bool:
         if self.target_type == AnnouncementTarget.ALL:
             return True
 

@@ -3,7 +3,7 @@ from channels.layers import get_channel_layer
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .models import Announcement
+from .models import Announcement, AnnouncementTarget
 from .serializers import AnnouncementSerializer
 
 
@@ -21,10 +21,10 @@ def broadcast_announcement(event: str, announcement: Announcement):
         "announcement": serializer.data,
     }
 
-    if announcement.target_type == Announcement.AnnouncementTarget.ALL:
+    if announcement.target_type == AnnouncementTarget.ALL:
         groups = ["ecrans_tous"]
 
-    elif announcement.target_type == Announcement.AnnouncementTarget.GROUP:
+    elif announcement.target_type == AnnouncementTarget.GROUP:
         groups = [
             f"ecran_{screen.id}"
             for screen in announcement.target_group.screens.all()

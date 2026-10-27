@@ -4,6 +4,7 @@
 import uuid
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 class ScreenGroup(models.Model):
@@ -24,12 +25,23 @@ class ScreenGroup(models.Model):
         return self.name
     
 class Screen(models.Model):
-    name = models.CharField("nom", max_length=100)
+    name = models.CharField(
+        "nom de l’écran",
+        max_length=150,
+        unique=True,
+    )
+    slug = models.SlugField(
+        "identifiant URL",
+        max_length=180,
+        unique=True,
+        help_text="Ex : salle-de-priere-gauche",
+    )
     location = models.CharField(
         "emplacement",
         max_length=150,
         help_text="Ex : entrée principale, salle de prière, cour.",
     )
+    is_active = models.BooleanField("actif", default=True)
     group = models.ForeignKey(
         ScreenGroup,
         on_delete=models.SET_NULL,
@@ -74,6 +86,7 @@ class Screen(models.Model):
     class Meta:
         verbose_name = "écran"
         verbose_name_plural = "écrans"
+        ordering = ["name"]
 
     def __str__(self):
         return f"{self.name} — {self.location}"
@@ -82,6 +95,12 @@ class Screen(models.Model):
         self.is_online = True
         self.last_seen_at = timezone.now()
         self.save(update_fields=["is_online", "last_seen_at"])
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+
+        super().save(*args, **kwargs)
 
 
 class ScreenContent(models.Model):

@@ -1,10 +1,10 @@
 from django.urls import re_path
 
-from . import consumers
+from announcements import consumers
 
 websocket_urlpatterns = [
     re_path(
-        r"^ws/ecran/(?P<screen_id>\d+)/$",
+        r"^ws/ecran/(?P<screen_slug>[-\w]+)/$",
         consumers.ScreenConsumer.as_asgi(),
     ),
 ]

@@ -9,6 +9,7 @@ from .models import (
     MosqueProfile,
     NewsArticle,
     QuranVerse,
+    QuranVerseTarget
 )
 
 
@@ -195,12 +196,63 @@ class GalleryImageAdmin(admin.ModelAdmin):
 class QuranVerseAdmin(admin.ModelAdmin):
     list_display = (
         "reference",
+        "translation",
+        "is_active",
+        "order",
+        "target_type",
+        "target_screens_count",
+    )
+
+    list_filter = (
+        "is_active",
+        "target_type",
+        "target_screens",
+    )
+
+    search_fields = (
+        "reference",
+        "arabic",
+        "translation",
+    )
+
+    list_editable = (
         "is_active",
         "order",
     )
-    list_filter = ("is_active",)
-    search_fields = ("reference", "arabic", "translation")
-    ordering = ("order",)
+
+    autocomplete_fields = ("target_screens",)
+    filter_horizontal = ("target_screens",)
+
+    fieldsets = (
+        (
+            "Verset",
+            {
+                "fields": (
+                    "arabic",
+                    "translation",
+                    "reference",
+                )
+            },
+        ),
+        (
+            "Affichage",
+            {
+                "fields": (
+                    "is_active",
+                    "order",
+                    "target_type",
+                    "target_screens",
+                )
+            },
+        ),
+    )
+
+    @admin.display(description="Écrans ciblés")
+    def target_screens_count(self, obj):
+        if obj.target_type == QuranVerseTarget.ALL:
+            return "Tous"
+
+        return obj.target_screens.count()
 
 
 @admin.register(ContactMessage)

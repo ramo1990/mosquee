@@ -117,6 +117,10 @@ class GalleryImage(models.Model):
         return self.caption or f"Image {self.id}"
 
 
+class QuranVerseTarget(models.TextChoices):
+    ALL = "all", "Tous les écrans"
+    SELECTED = "selected", "Écrans sélectionnés"
+
 class QuranVerse(models.Model):
     arabic = models.TextField("texte arabe")
     translation = models.TextField("traduction")
@@ -127,6 +131,20 @@ class QuranVerse(models.Model):
     )
     is_active = models.BooleanField("actif", default=True)
     order = models.PositiveIntegerField("ordre", default=0)
+
+    target_type = models.CharField(
+        "affichage sur les écrans",
+        max_length=10,
+        choices=QuranVerseTarget.choices,
+        default=QuranVerseTarget.ALL,
+    )
+
+    target_screens = models.ManyToManyField(
+        "screens.Screen",
+        blank=True,
+        related_name="quran_verses",
+        verbose_name="écrans ciblés",
+    )
 
     class Meta:
         verbose_name = "verset"

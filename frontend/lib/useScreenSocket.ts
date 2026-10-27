@@ -11,7 +11,7 @@ export type ScreenSocketMessage = {
 };
 
 export function useScreenSocket(
-  screenId: number,
+  screenSlug: string,
   onMessage: (message: ScreenSocketMessage) => void
 ) {
   const [connected, setConnected] = useState(false);
@@ -33,7 +33,7 @@ export function useScreenSocket(
     function connect() {
       if (closedByCleanup) return;
 
-      const socket = new WebSocket(`${wsUrl}/ws/ecran/${screenId}/`);
+      const socket = new WebSocket(`${wsUrl}/ws/ecran/${screenSlug}/`);
       socketRef.current = socket;
 
       socket.onopen = () => {
@@ -80,7 +80,7 @@ export function useScreenSocket(
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [screenId]);
+  }, [screenSlug]);
 
   return { connected };
 }

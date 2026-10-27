@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiGetList } from "@/lib/api";
 import type { Announcement, PrayerTime, QuranVerse, Event } from "@/lib/types";
 import { useScreenSocket } from "@/lib/useScreenSocket";
-import { useParams } from "next/navigation";
 
 
 type ScreenSlide =
@@ -197,9 +196,7 @@ function formatCountdown(milliseconds: number) {
     .join(":");
 }
 
-export default function MosqueScreenPage() {
-  const params = useParams();
-  const screenId = Number(params.screenId);
+export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: string, screenName?: string;}) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [prayerTime, setPrayerTime] = useState<PrayerTime | null>(null);
   const [now, setNow] = useState<Date | null>(null);
@@ -256,10 +253,10 @@ export default function MosqueScreenPage() {
       versesResult,
       eventsResult,
     ] = await Promise.allSettled([
-      apiGetList<Announcement>(`/annonces/screen/${screenId}/`),
+      apiGetList<Announcement>(`/annonces/screen/${screenSlug}/`),
       apiGet<PrayerTime>("/horaires-prieres/today/"),
-      apiGetList<QuranVerse>("/versets/screen/"),
-      apiGetList<Event>("/evenements/upcoming/"),
+      apiGetList<QuranVerse>(`/versets/screen/${screenSlug}/`),
+      apiGetList<Event>(`/evenements/upcoming/${screenSlug}/`)
     ]);
 
     if (announcementsResult.status === "fulfilled") {
@@ -293,9 +290,9 @@ export default function MosqueScreenPage() {
       setEvents(eventsResult.value);
       setEventsLoaded(true);
     }
-  }, [screenId]);
+  }, [screenSlug]);
 
-  const { connected } = useScreenSocket(screenId, () => {
+  const { connected } = useScreenSocket(screenSlug, () => {
     void loadData();
   });
 
@@ -396,6 +393,10 @@ export default function MosqueScreenPage() {
             {getClock(now)}
           </time>
         </div>
+
+        <p className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
+          {screenName ?? screenSlug}
+        </p>
       </header>
 
       

@@ -25,6 +25,7 @@ class ScreenSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "slug",
             "location",
             "pairing_code",
             "is_online",

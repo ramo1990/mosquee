@@ -61,3 +61,11 @@ export type MosqueProfile = {
   facebook: string | null;
   youtube: string | null;
 };
+
+export type Screen = {
+  id: number;
+  name: string;
+  slug: string;
+  location?: string | null;
+  is_active: boolean;
+};

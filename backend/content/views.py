@@ -3,6 +3,9 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from screens.models import Screen
 
 from config.permissions import IsMosqueStaff
 from .models import (
@@ -89,16 +92,21 @@ class QuranVerseViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         permission_classes=[AllowAny],
-        url_path="screen",
+        url_path=r"versets/(?P<screen_id>\d+)",
     )
-    def screen_list(self, request):
-        verses = (
-            QuranVerse.objects
-            .filter(is_active=True)
+    def verses_for_screen(self, request, screen_id=None):
+        screen = get_object_or_404(Screen, id=screen_id)
+
+        queryset = (
+            QuranVerse.objects.filter(is_active=True)
+            .filter(
+                Q(target_type=QuranVerse.QuranVerseTarget.ALL)
+                | Q(target_screens=screen)
+            )
             .order_by("order")
         )
 
-        serializer = self.get_serializer(verses, many=True)
+        serializer = QuranVerseSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(

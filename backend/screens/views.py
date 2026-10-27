@@ -3,11 +3,17 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework import generics
 
 from config.permissions import IsScreenManager
 from .models import Screen, ScreenContent
 from .serializers import ScreenContentSerializer, ScreenSerializer
 
+
+class ScreenListView(generics.ListAPIView):
+    queryset = Screen.objects.filter(is_active=True).order_by("name")
+    serializer_class = ScreenSerializer
+    permission_classes = [AllowAny]
 
 class ScreenViewSet(viewsets.ModelViewSet):
     queryset = Screen.objects.prefetch_related("contents")

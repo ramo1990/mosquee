@@ -1,8 +1,5 @@
-
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-
-import LayoutContent from "@/components/LayoutContent";
 
 import "./globals.css";
 
@@ -29,8 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <body className="flex min-h-screen flex-col bg-gray-50 text-gray-900 antialiased">
-        <LayoutContent>{children}</LayoutContent>
+      <body className="bg-gray-50 text-gray-900 antialiased">
+        {children}
       </body>
     </html>
   );

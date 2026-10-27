@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Event, EventCategory, EventRegistration
+from .models import Event, EventCategory, EventRegistration, EventTarget
 
 
 @admin.register(EventCategory)
@@ -27,21 +27,41 @@ class EventAdmin(admin.ModelAdmin):
         "starts_at",
         "ends_at",
         "status",
+        "target_type",
+        "target_screens_count",
         "registration_required",
         "capacity",
         "registrations_count",
         "image_preview",
     )
+
     list_filter = (
         "status",
         "category",
+        "target_type",
+        "target_screens",
         "registration_required",
         "starts_at",
     )
-    search_fields = ("title", "description", "location")
+
+    search_fields = (
+        "title",
+        "description",
+        "location",
+    )
+
     prepopulated_fields = {"slug": ("title",)}
-    readonly_fields = ("created_at", "updated_at", "image_preview")
-    autocomplete_fields = ("category", "created_by")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "image_preview",
+    )
+    autocomplete_fields = (
+        "category",
+        "created_by",
+        "target_screens",
+    )
+    filter_horizontal = ("target_screens",)
     date_hierarchy = "starts_at"
     inlines = [EventRegistrationInline]
 
@@ -71,6 +91,15 @@ class EventAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "Affichage sur les écrans",
+            {
+                "fields": (
+                    "target_type",
+                    "target_screens",
+                )
+            },
+        ),
+        (
             "Inscriptions",
             {
                 "fields": (
@@ -91,15 +120,23 @@ class EventAdmin(admin.ModelAdmin):
         ),
     )
 
+    
+    @admin.display(description="Écrans ciblés")
+    def target_screens_count(self, obj):
+        if obj.target_type == EventTarget.ALL:
+            return "Tous"
+
+        return obj.target_screens.count()
+
     @admin.display(description="Inscriptions")
     def registrations_count(self, obj):
         return obj.registrations.count()
 
     @admin.display(description="Aperçu")
     def image_preview(self, obj):
-        if obj.image:
+        if obj and obj.image:
             return format_html(
-                '<img src="{}" style="height:60px;border-radius:6px;" />',
+                '<img src="{}" style="height:60px; border-radius:6px;" />',
                 obj.image.url,
             )
         return "—"
