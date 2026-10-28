@@ -7,6 +7,7 @@ const navigation = [
   { href: "/horaires", label: "Horaires" },
   { href: "/evenements", label: "Événements" },
   { href: "/contact", label: "Contact" },
+  { href: "/mosquees", label: "Mosquées" },
 ];
 
 export default function Navbar() {

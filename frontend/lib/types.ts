@@ -34,6 +34,16 @@ export type QuranVerse = {
   reference: string;
   is_active: boolean;
   order: number;
+  target_type: "all" | "selected";
+  target_screens: number[];
+};
+
+export type ContactMessagePayload = {
+  full_name: string;
+  phone?: string;
+  email?: string;
+  subject: string;
+  message: string;
 };
 
 export type Event = {
@@ -51,15 +61,51 @@ export type Event = {
 export type MosqueProfile = {
   id: number;
   name: string;
-  slogan: string | null;
+  slug: string;
+  slogan?: string | null;
   description: string;
   address: string;
   city: string;
-  phone: string | null;
-  whatsapp: string | null;
-  email: string | null;
-  facebook: string | null;
-  youtube: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  facebook?: string | null;
+  youtube?: string | null;
+  logo?: string | null;
+  cover_image?: string | null;
+};
+
+export type NewsArticle = {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  body: string;
+  image?: string | null;
+  is_published: boolean;
+  published_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GalleryAlbum = {
+  id: number;
+  title: string;
+  slug: string;
+  description?: string | null;
+  event?: number | null;
+  created_at: string;
+  images: GalleryImage[];
+};
+
+export type GalleryImage = {
+  id: number;
+  album: number;
+  image: string;
+  caption?: string | null;
+  uploaded_at: string;
 };
 
 export type Screen = {

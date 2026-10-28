@@ -39,6 +39,14 @@ class Event(models.Model):
         blank=True,
         related_name="events",
     )
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="events",
+        verbose_name="mosquée",
+    )
     image = models.ImageField(
         "image",
         upload_to="events/%Y/%m/",

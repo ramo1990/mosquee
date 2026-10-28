@@ -79,14 +79,27 @@ function PrayerTimesError() {
   );
 }
 
-export default async function PrayerTimesToday() {
+type PrayerTimesTodayProps = {
+  prayerTime?: PrayerTime;
+};
+
+export default async function PrayerTimesToday({prayerTime: suppliedPrayerTime,}: PrayerTimesTodayProps = {}) {
   let prayerTime: PrayerTime;
 
-  try {
-    prayerTime = await apiGet<PrayerTime>("/horaires-prieres/today/");
-  } catch (error) {
-    console.error("Erreur lors du chargement des horaires de prière :", error);
-    return <PrayerTimesError />;
+  if (suppliedPrayerTime) {
+    prayerTime = suppliedPrayerTime;
+  } else {
+    try {
+      prayerTime = await apiGet<PrayerTime>(
+        "/horaires-prieres/today/"
+      );
+    } catch (error) {
+      console.error(
+        "Erreur lors du chargement des horaires de prière :",
+        error
+      );
+      return <PrayerTimesError />;
+    }
   }
 
   return (

@@ -9,6 +9,6 @@ router.register(
     DailyPrayerTimeViewSet,
     basename="daily-prayer-time",
 )
-router.register(r"ramadan", RamadanScheduleViewSet, basename="ramadan")
+router.register(r"ramadan", RamadanScheduleViewSet, basename="ramadan-schedule")
 
 urlpatterns = router.urls

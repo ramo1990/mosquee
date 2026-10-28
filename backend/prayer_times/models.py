@@ -5,7 +5,15 @@ from django.db import models
 
 
 class DailyPrayerTime(models.Model):
-    date = models.DateField("date", unique=True)
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="prayer_times",
+        verbose_name="mosquée",
+    )
+    date = models.DateField("date")
 
     fajr = models.TimeField("Fajr")
     sunrise = models.TimeField("lever du soleil", null=True, blank=True)
@@ -35,9 +43,16 @@ class DailyPrayerTime(models.Model):
         verbose_name = "horaire de prière"
         verbose_name_plural = "horaires de prière"
         ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["mosque", "date"],
+                name="unique_prayer_time_per_mosque_and_date",
+            )
+        ]
 
     def __str__(self):
-        return f"Horaires du {self.date:%d/%m/%Y}"
+        mosque_name = self.mosque.name if self.mosque else "Général"
+        return f"{mosque_name} — {self.date}"
 
 
 class RamadanSchedule(models.Model):
