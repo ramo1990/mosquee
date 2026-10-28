@@ -3,10 +3,17 @@
 
 from django.db import models
 from django.conf import settings
+from django.utils.text import slugify
 
 
 class MosqueProfile(models.Model):
     name = models.CharField("nom de la mosquée", max_length=200)
+    slug = models.SlugField(
+        "identifiant URL",
+        max_length=220,
+        unique=True,
+        blank=True,
+    )
     slogan = models.CharField("slogan", max_length=200, null=True, blank=True)
     description = models.TextField("présentation")
     address = models.CharField("adresse", max_length=255)
@@ -45,6 +52,12 @@ class MosqueProfile(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+
+        super().save(*args, **kwargs)
+
 
 class NewsArticle(models.Model):
     title = models.CharField("titre", max_length=200)
@@ -56,6 +69,14 @@ class NewsArticle(models.Model):
         upload_to="news/%Y/%m/",
         null=True,
         blank=True,
+    )
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="news_articles",
+        verbose_name="mosquée",
     )
     is_published = models.BooleanField("publié", default=False)
     published_at = models.DateTimeField("date de publication", null=True, blank=True)
@@ -89,6 +110,14 @@ class GalleryAlbum(models.Model):
         blank=True,
         related_name="albums",
     )
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="gallery_albums",
+        verbose_name="mosquée",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -117,6 +146,10 @@ class GalleryImage(models.Model):
         return self.caption or f"Image {self.id}"
 
 
+class QuranVerseTarget(models.TextChoices):
+    ALL = "all", "Tous les écrans"
+    SELECTED = "selected", "Écrans sélectionnés"
+
 class QuranVerse(models.Model):
     arabic = models.TextField("texte arabe")
     translation = models.TextField("traduction")
@@ -128,6 +161,20 @@ class QuranVerse(models.Model):
     is_active = models.BooleanField("actif", default=True)
     order = models.PositiveIntegerField("ordre", default=0)
 
+    target_type = models.CharField(
+        "affichage sur les écrans",
+        max_length=10,
+        choices=QuranVerseTarget.choices,
+        default=QuranVerseTarget.ALL,
+    )
+
+    target_screens = models.ManyToManyField(
+        "screens.Screen",
+        blank=True,
+        related_name="quran_verses",
+        verbose_name="écrans ciblés",
+    )
+
     class Meta:
         verbose_name = "verset"
         verbose_name_plural = "versets"
@@ -138,6 +185,14 @@ class QuranVerse(models.Model):
 
 
 class ContactMessage(models.Model):
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="contact_messages",
+        verbose_name="mosquée",
+    )
     full_name = models.CharField("nom complet", max_length=150)
     phone = models.CharField("téléphone", max_length=30, null=True, blank=True)
     email = models.EmailField("e-mail", null=True, blank=True)

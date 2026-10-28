@@ -1,12 +1,16 @@
 # events/views.py
 from django.utils import timezone
+from content.models import MosqueProfile
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from screens.models import Screen
 
 from config.permissions import IsMosqueStaff
-from .models import Event, EventCategory, EventRegistration
+from .models import Event, EventCategory, EventRegistration, EventTarget
 from .serializers import (
     EventCategorySerializer,
     EventRegistrationSerializer,
@@ -37,18 +41,59 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["list", "retrieve", "upcoming", "register"]:
             return [AllowAny()]
+
         return super().get_permissions()
 
     @action(
         detail=False,
         methods=["get"],
+        permission_classes=[AllowAny],
         url_path="upcoming",
     )
-    def upcoming(self, request):
-        queryset = self.get_queryset().filter(
-            starts_at__gte=timezone.now(),
-            status=Event.Status.PUBLISHED,
+    def upcoming_all(self, request):
+        now = timezone.now()
+
+        queryset = (
+            self.get_queryset()
+            .filter(
+                starts_at__gte=timezone.now(),
+                status=Event.Status.PUBLISHED,
+            )
+            .order_by("starts_at")
         )
+
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[AllowAny],
+        url_path=r"upcoming/(?P<screen_slug>[-\w]+)",
+    )
+    def upcoming_for_screen(self, request, screen_slug=None):
+        now = timezone.now()
+
+        screen = get_object_or_404(
+            Screen,
+            slug=screen_slug,
+            is_active=True,
+        )
+
+        queryset = (
+            self.get_queryset()
+            .filter(
+                starts_at__gte=now,
+                status=Event.Status.PUBLISHED,
+            )
+            .filter(
+                Q(target_type=EventTarget.ALL)
+                | Q(target_screens=screen)
+            )
+            .order_by("starts_at")
+        )
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -79,6 +124,34 @@ class EventViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(event=event)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[AllowAny],
+        url_path=r"mosquee/(?P<mosque_slug>[-\w]+)",
+    )
+    def by_mosque(self, request, mosque_slug=None):
+        now = timezone.now()
+
+        mosque = get_object_or_404(
+            MosqueProfile,
+            slug=mosque_slug,
+        )
+
+        queryset = (
+            self.get_queryset()
+            .filter(
+                mosque=mosque,
+                starts_at__gte=now,
+                status=Event.Status.PUBLISHED,
+            )
+            .order_by("starts_at")
+        )
+
+        serializer = self.get_serializer(queryset, many=True)
+
+        return Response(serializer.data)
 
 
 class EventRegistrationViewSet(viewsets.ModelViewSet):

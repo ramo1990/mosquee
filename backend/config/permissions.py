@@ -30,3 +30,20 @@ class IsScreenManager(BasePermission):
                 or getattr(user, "can_manage_screens", False)
             )
         )
+
+
+class IsAdminOrStaff(BasePermission):
+    message = "Seuls les administrateurs ou membres du staff peuvent effectuer cette action."
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        return bool(
+            user
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or user.is_staff
+                or getattr(user, "is_mosque_staff", False)
+            )
+        )

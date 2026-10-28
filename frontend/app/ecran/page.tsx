@@ -1,117 +1,117 @@
-// src/app/ecran/page.tsx
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
-import type { Announcement, PrayerTime } from "@/lib/types";
 
-export default function MosqueScreenPage() {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [prayerTime, setPrayerTime] = useState<PrayerTime | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [now, setNow] = useState(new Date());
+import { apiGetList } from "@/lib/api";
+import type { Screen } from "@/lib/types";
+
+export default function ScreensPage() {
+  const [screens, setScreens] = useState<Screen[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
+    let active = true;
+
+    async function loadScreens() {
       try {
-        const [announcementsData, prayerData] = await Promise.all([
-          apiGet<Announcement[]>("/annonces/screen/"),
-          apiGet<PrayerTime>("/horaires-prieres/today/"),
-        ]);
+        const data = await apiGetList<Screen>("/ecrans/liste/");
 
-        setAnnouncements(announcementsData);
-        setPrayerTime(
-          "fajr" in prayerData ? (prayerData as PrayerTime) : null
-        );
+        if (active) {
+          setScreens(data);
+          setError(false);
+        }
       } catch {
-        // L’écran réessaiera lors du prochain intervalle.
+        if (active) {
+          setError(true);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-    };
+    }
 
-    loadData();
-
-    const dataInterval = setInterval(loadData, 60_000);
-    const clockInterval = setInterval(() => setNow(new Date()), 1000);
+    void loadScreens();
 
     return () => {
-      clearInterval(dataInterval);
-      clearInterval(clockInterval);
+      active = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (announcements.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setCurrentIndex((index) => (index + 1) % announcements.length);
-    }, 15_000);
-
-    return () => clearInterval(interval);
-  }, [announcements.length]);
-
-  const currentAnnouncement = announcements[currentIndex];
-
   return (
-    <main className="flex h-screen w-screen flex-col bg-black p-10 text-white">
-      <header className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-emerald-400">
-          Mosquée
-        </h1>
-        <p className="text-5xl font-bold tabular-nums">
-          {now.toLocaleTimeString("fr-FR")}
-        </p>
-      </header>
+    <main className="min-h-dvh bg-[#07110e] px-6 py-10 text-white">
+      <div className="mx-auto w-full max-w-5xl">
+        <header className="mb-8 text-center">
+          <p className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-400">
+            Mosquée
+          </p>
 
-      {prayerTime && (
-        <section className="mt-8 grid grid-cols-5 gap-4">
-          {[
-            ["Fajr", prayerTime.fajr],
-            ["Dhuhr", prayerTime.dhuhr],
-            ["Asr", prayerTime.asr],
-            ["Maghrib", prayerTime.maghrib],
-            ["Isha", prayerTime.isha],
-          ].map(([label, time]) => (
-            <div
-              key={label}
-              className="rounded-2xl bg-neutral-900 p-6 text-center"
-            >
-              <p className="text-xl text-gray-400">{label}</p>
-              <p className="mt-2 text-4xl font-bold">{time}</p>
-            </div>
-          ))}
-        </section>
-      )}
+          <h1 className="mt-2 text-4xl font-bold">
+            Choisissez un écran
+          </h1>
 
-      <section className="mt-10 flex-1">
-        {currentAnnouncement ? (
-          <article
-            className={`h-full rounded-3xl p-10 ${
-              currentAnnouncement.priority === "high"
-                ? "bg-red-900"
-                : "bg-neutral-900"
-            }`}
-          >
-            {currentAnnouncement.priority === "high" && (
-              <span className="rounded-full bg-red-600 px-4 py-1 text-sm font-bold">
-                URGENT
-              </span>
-            )}
+          <p className="mt-2 text-gray-400">
+            Sélectionnez l’écran à afficher sur le téléviseur.
+          </p>
+        </header>
 
-            <h2 className="mt-4 text-6xl font-bold">
-              {currentAnnouncement.title}
-            </h2>
-            <p className="mt-6 text-4xl leading-relaxed text-gray-200">
-              {currentAnnouncement.body}
-            </p>
-          </article>
+        {loading ? (
+          <p className="text-center text-gray-300">
+            Chargement des écrans...
+          </p>
+        ) : error ? (
+          <p className="text-center text-red-400">
+            Impossible de charger la liste des écrans.
+          </p>
+        ) : screens.length === 0 ? (
+          <p className="text-center text-gray-300">
+            Aucun écran actif n’est disponible.
+          </p>
         ) : (
-          <div className="flex h-full items-center justify-center rounded-3xl bg-neutral-900">
-            <p className="text-4xl text-gray-500">
-              Aucune annonce pour le moment
-            </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {screens.map((screen) => (
+              <Link
+                key={screen.id}
+                href={`/ecran/${screen.slug}`}
+                className="group rounded-2xl border border-emerald-500/20 bg-emerald-950/50 p-6 transition hover:border-emerald-400 hover:bg-emerald-900/60"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-emerald-600/20 px-3 py-1 text-xs font-bold uppercase text-emerald-300">
+                    Écran
+                  </span>
+
+                  <span className="text-xs text-gray-400">
+                    {screen.is_active ? "Actif" : "Inactif"}
+                  </span>
+                </div>
+
+                <h2 className="mt-4 text-xl font-bold leading-tight">
+                  {screen.name}
+                </h2>
+
+                {screen.location && (
+                  <p className="mt-1 text-sm text-gray-400">
+                    {screen.location}
+                  </p>
+                )}
+
+                <p className="mt-4 font-mono text-xs text-gray-500">
+                  /ecran/{screen.slug}
+                </p>
+
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-300">
+                  Ouvrir l’affichage
+                  <span className="transition group-hover:translate-x-1">
+                    →
+                  </span>
+                </span>
+              </Link>
+            ))}
           </div>
         )}
-      </section>
+      </div>
     </main>
   );
 }

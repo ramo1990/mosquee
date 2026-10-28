@@ -35,6 +35,8 @@ AUTH_USER_MODEL = "accounts.User"
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,8 +46,9 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
-    "channels",
     "django_extensions",
+    "channels",
+    "django_filters",
 
     # Apps
     "accounts",
@@ -61,6 +64,21 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3004",
 ]
 
+ASGI_APPLICATION = "backend.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [
+                {
+                    "address": "redis://127.0.0.1:6379",
+                    "socket_timeout": None,
+                }
+            ],
+        },
+    },
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -84,8 +102,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
     "DEFAULT_PAGINATION_CLASS":
-        "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 20,
+        "backend.pagination.StandardResultsSetPagination",
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",

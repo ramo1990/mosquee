@@ -1,5 +1,6 @@
 # content/serializers.py
 from rest_framework import serializers
+
 from .models import (
     ContactMessage,
     GalleryAlbum,
@@ -13,15 +14,41 @@ from .models import (
 class MosqueProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = MosqueProfile
-        fields = "__all__"
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "slogan",
+            "description",
+            "address",
+            "city",
+            "latitude",
+            "longitude",
+            "phone",
+            "whatsapp",
+            "email",
+            "facebook",
+            "youtube",
+            "logo",
+            "cover_image",
+        ]
 
 
-class NewsArticleSerializer(serializers.ModelSerializer):
-    author_name = serializers.CharField(
-        source="created_by.get_full_name",
-        read_only=True,
-    )
+class NewsArticleListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NewsArticle
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "excerpt",
+            "image",
+            "is_published",
+            "published_at",
+            "created_at",
+        ]
 
+class NewsArticleDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = NewsArticle
         fields = [
@@ -33,7 +60,6 @@ class NewsArticleSerializer(serializers.ModelSerializer):
             "image",
             "is_published",
             "published_at",
-            "author_name",
             "created_at",
             "updated_at",
         ]
@@ -44,14 +70,39 @@ class GalleryImageSerializer(serializers.ModelSerializer):
         model = GalleryImage
         fields = [
             "id",
-            "album",
             "image",
             "caption",
             "uploaded_at",
         ]
 
 
-class GalleryAlbumSerializer(serializers.ModelSerializer):
+class GalleryAlbumListSerializer(serializers.ModelSerializer):
+    cover_image = serializers.SerializerMethodField()
+    images_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GalleryAlbum
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "description",
+            "event",
+            "created_at",
+            "cover_image",
+            "images_count",
+        ]
+
+    def get_cover_image(self, obj):
+        first_image = obj.images.first()
+
+        return first_image.image.url if first_image else None
+
+    def get_images_count(self, obj):
+        return obj.images.count()
+
+
+class GalleryAlbumDetailSerializer(serializers.ModelSerializer):
     images = GalleryImageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -62,12 +113,17 @@ class GalleryAlbumSerializer(serializers.ModelSerializer):
             "slug",
             "description",
             "event",
-            "images",
             "created_at",
+            "images",
         ]
 
 
 class QuranVerseSerializer(serializers.ModelSerializer):
+    target_screens = serializers.PrimaryKeyRelatedField(
+        many=True,
+        read_only=True,
+    )
+
     class Meta:
         model = QuranVerse
         fields = [
@@ -77,14 +133,40 @@ class QuranVerseSerializer(serializers.ModelSerializer):
             "reference",
             "is_active",
             "order",
+            "target_type",
+            "target_screens",
         ]
 
 
-class ContactMessageSerializer(serializers.ModelSerializer):
+class ContactMessageCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = [
+            "full_name",
+            "phone",
+            "email",
+            "subject",
+            "message",
+        ]
+
+    def create(self, validated_data):
+        mosque = self.context.get("mosque")
+
+        validated_data["mosque"] = mosque
+
+        return super().create(validated_data)
+
+
+class ContactMessageAdminSerializer(serializers.ModelSerializer):
+    mosque = serializers.SlugRelatedField(
+        slug_field="slug",
+        read_only=True,
+    )
     class Meta:
         model = ContactMessage
         fields = [
             "id",
+            "mosque",
             "full_name",
             "phone",
             "email",
@@ -93,4 +175,3 @@ class ContactMessageSerializer(serializers.ModelSerializer):
             "is_read",
             "created_at",
         ]
-        read_only_fields = ["is_read", "created_at"]

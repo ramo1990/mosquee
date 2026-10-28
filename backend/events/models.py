@@ -18,7 +18,10 @@ class EventCategory(models.Model):
     def __str__(self):
         return self.name
 
-
+class EventTarget(models.TextChoices):
+    ALL = "all", "Tous les écrans"
+    SELECTED = "selected", "Écrans sélectionnés"
+    
 class Event(models.Model):
     class Status(models.TextChoices):
         DRAFT = "draft", "Brouillon"
@@ -36,6 +39,14 @@ class Event(models.Model):
         blank=True,
         related_name="events",
     )
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="events",
+        verbose_name="mosquée",
+    )
     image = models.ImageField(
         "image",
         upload_to="events/%Y/%m/",
@@ -52,6 +63,19 @@ class Event(models.Model):
         help_text="Laisser vide si l’événement est ouvert à tous.",
     )
     registration_required = models.BooleanField("inscription requise", default=False)
+    target_type = models.CharField(
+        "affichage sur les écrans",
+        max_length=10,
+        choices=EventTarget.choices,
+        default=EventTarget.ALL,
+    )
+
+    target_screens = models.ManyToManyField(
+        "screens.Screen",
+        blank=True,
+        related_name="events",
+        verbose_name="écrans ciblés",
+    )
     status = models.CharField(
         "statut",
         max_length=15,
