@@ -8,6 +8,14 @@ from django.utils import timezone
 
 
 class DonationCampaign(models.Model):
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="donation_campaigns",
+        verbose_name="mosquée",
+    )
     title = models.CharField("titre", max_length=200)
     slug = models.SlugField("slug", max_length=220, unique=True)
     description = models.TextField("description")
@@ -63,6 +71,14 @@ class Donation(models.Model):
         BANK_TRANSFER = "bank_transfer", "Virement bancaire"
         CASH = "cash", "Espèces"
 
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="donations",
+        verbose_name="mosquée",
+    )
     reference = models.UUIDField(
         "référence",
         default=uuid.uuid4,

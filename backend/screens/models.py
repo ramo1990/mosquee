@@ -8,7 +8,15 @@ from django.utils.text import slugify
 
 
 class ScreenGroup(models.Model):
-    name = models.CharField("nom du groupe", max_length=150, unique=True)
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="screen_groups",
+        verbose_name="mosquée",
+    )
+    name = models.CharField("nom du groupe", max_length=150)
     description = models.TextField(
         "description",
         null=True,
@@ -20,15 +28,29 @@ class ScreenGroup(models.Model):
     class Meta:
         verbose_name = "groupe d’écrans"
         verbose_name_plural = "groupes d’écrans"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["mosque", "name"],
+                name="unique_screen_group_per_mosque",
+            )
+        ]
 
     def __str__(self):
         return self.name
+
     
 class Screen(models.Model):
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="screens",
+        verbose_name="mosquée",
+    )
     name = models.CharField(
         "nom de l’écran",
-        max_length=150,
-        unique=True,
+        max_length=150
     )
     slug = models.SlugField(
         "identifiant URL",
@@ -87,6 +109,12 @@ class Screen(models.Model):
         verbose_name = "écran"
         verbose_name_plural = "écrans"
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["mosque", "name"],
+                name="unique_screen_name_per_mosque",
+            )
+        ]
 
     def __str__(self):
         return f"{self.name} — {self.location}"

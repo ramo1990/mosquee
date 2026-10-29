@@ -1,5 +1,5 @@
-# screens/serializers.py
 from rest_framework import serializers
+
 from .models import Screen, ScreenContent
 
 
@@ -18,12 +18,18 @@ class ScreenContentSerializer(serializers.ModelSerializer):
 
 
 class ScreenSerializer(serializers.ModelSerializer):
+    mosque = serializers.SlugRelatedField(
+        slug_field="slug",
+        read_only=True,
+    )
+
     contents = ScreenContentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Screen
         fields = [
             "id",
+            "mosque",
             "name",
             "slug",
             "location",
@@ -34,6 +40,7 @@ class ScreenSerializer(serializers.ModelSerializer):
             "verse_duration",
             "night_mode_start",
             "night_mode_end",
+            "group",
             "contents",
         ]
         read_only_fields = [

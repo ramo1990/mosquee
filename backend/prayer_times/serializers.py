@@ -34,6 +34,21 @@ class DailyPrayerTimeSerializer(serializers.ModelSerializer):
 
 
 class RamadanScheduleSerializer(serializers.ModelSerializer):
+    mosque = serializers.SlugRelatedField(
+        slug_field="slug",
+        read_only=True,
+    )
+
     class Meta:
         model = RamadanSchedule
-        fields = "__all__"
+        fields = [
+            "id",
+            "mosque",
+            "date",
+            "suhoor_end",
+            "iftar",
+            "tarawih",
+            "note",
+            "created_at",
+            "updated_at",
+        ]
