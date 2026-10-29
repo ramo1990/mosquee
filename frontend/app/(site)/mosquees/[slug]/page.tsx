@@ -9,9 +9,13 @@ import type {
   MosqueProfile,
   NewsArticle,
   Event,
+  DonationCampaign,
 } from "@/lib/types";
 import MosqueContactForm from "@/components/MosqueContactForm";
 import MosquePrayerTimesToday from "@/components/MosquePrayerTimesToday";
+import MosqueAnnouncements from "@/components/MosqueAnnouncements";
+import MosqueDonationForm from "@/components/MosqueDonationForm";
+import MosqueRamadanSchedule from "@/components/MosqueRamadanSchedule";
 
 
 function SectionHeading({
@@ -272,6 +276,21 @@ async function MosqueGallery({ slug }: { slug: string }) {
   );
 }
 
+async function MosqueDonations({ slug }: { slug: string }) {
+  const campaigns = await apiGetList<DonationCampaign>(
+    `/campagnes-dons/mosquee/${slug}/`
+  );
+
+  return (
+    <MosqueDonationForm
+      mosqueSlug={slug}
+      campaigns={campaigns.map((campaign) => ({
+        slug: campaign.slug,
+        title: campaign.title,
+      }))}
+    />
+  );
+}
 
 export default function MosquePage({
   params,
@@ -299,6 +318,14 @@ async function MosquePageContent({
         <MosqueHero slug={slug} />
       </Suspense>
 
+      <Link
+        href={`/mosquees/${slug}/ecrans`}
+        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-900"
+      >
+        Voir les écrans
+        <span aria-hidden="true">→</span>
+      </Link>
+
       <section>
         <SectionHeading
           title="Horaires de prière"
@@ -307,6 +334,28 @@ async function MosquePageContent({
 
         <Suspense fallback={<LoadingCard lines={5} />}>
           <MosquePrayerTimesToday mosqueSlug={slug} />
+        </Suspense>
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Programme Ramadan"
+          description="Horaires du Suhoor, de l’Iftar et de la Tarawih."
+        />
+
+        <Suspense fallback={<LoadingCard lines={3} />}>
+          <MosqueRamadanSchedule mosqueSlug={slug} />
+        </Suspense>
+      </section>
+
+      <section>
+        <SectionHeading
+          title="Annonces"
+          description="Les informations publiées par cette mosquée."
+        />
+
+        <Suspense fallback={<LoadingCard lines={4} />}>
+          <MosqueAnnouncements mosqueSlug={slug} />
         </Suspense>
       </section>
 
@@ -343,14 +392,25 @@ async function MosquePageContent({
         </Suspense>
       </section>
 
-        <section>
-            <SectionHeading
-                title="Contact"
-                description="Envoyez un message directement à cette mosquée."
-            />
+      <section>
+        <SectionHeading
+          title="Soutenir cette mosquée"
+          description="Faites un don pour soutenir ses activités et projets."
+        />
 
-            <MosqueContactForm mosqueSlug={slug} />
-        </section>
+        <Suspense fallback={<LoadingCard lines={5} />}>
+          <MosqueDonations slug={slug} />
+        </Suspense>
+      </section>
+
+      <section>
+          <SectionHeading
+              title="Contact"
+              description="Envoyez un message directement à cette mosquée."
+          />
+
+          <MosqueContactForm mosqueSlug={slug} />
+      </section>
     </div>
   );
 }

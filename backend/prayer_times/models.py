@@ -56,17 +56,37 @@ class DailyPrayerTime(models.Model):
 
 
 class RamadanSchedule(models.Model):
-    date = models.DateField("date", unique=True)
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="ramadan_schedules",
+        verbose_name="mosquée",
+    )
+
+    date = models.DateField("date")
 
     suhoor_end = models.TimeField("fin du Suhoor", null=True, blank=True)
     iftar = models.TimeField("Iftar")
     tarawih = models.TimeField("Tarawih", null=True, blank=True)
     note = models.TextField("note", null=True, blank=True)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         verbose_name = "programme Ramadan"
         verbose_name_plural = "programmes Ramadan"
         ordering = ["date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["mosque", "date"],
+                name="unique_ramadan_schedule_per_mosque_and_date",
+            )
+        ]
 
     def __str__(self):
-        return f"Ramadan — {self.date:%d/%m/%Y}"
+        mosque_name = self.mosque.name if self.mosque else "Général"
+
+        return f"{mosque_name} — Ramadan {self.date:%d/%m/%Y}"

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { apiGetList } from "@/lib/api";
 import type { Screen } from "@/lib/types";
@@ -16,7 +16,7 @@ export default function ScreensPage() {
 
     async function loadScreens() {
       try {
-        const data = await apiGetList<Screen>("/ecrans/liste/");
+        const data = await apiGetList<Screen>("/ecrans/");
 
         if (active) {
           setScreens(data);
@@ -40,10 +40,26 @@ export default function ScreensPage() {
     };
   }, []);
 
+  const screensByMosque = useMemo(() => {
+    const groups = new Map<string, Screen[]>();
+
+    screens.forEach((screen) => {
+      const key = screen.mosque ?? "Sans mosquée";
+
+      const current = groups.get(key) ?? [];
+
+      current.push(screen);
+
+      groups.set(key, current);
+    });
+
+    return Array.from(groups.entries());
+  }, [screens]);
+
   return (
     <main className="min-h-dvh bg-[#07110e] px-6 py-10 text-white">
-      <div className="mx-auto w-full max-w-5xl">
-        <header className="mb-8 text-center">
+      <div className="mx-auto w-full max-w-6xl">
+        <header className="mb-10 text-center">
           <p className="text-sm font-bold uppercase tracking-[0.3em] text-emerald-400">
             Mosquée
           </p>
@@ -70,44 +86,74 @@ export default function ScreensPage() {
             Aucun écran actif n’est disponible.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {screens.map((screen) => (
-              <Link
-                key={screen.id}
-                href={`/ecran/${screen.slug}`}
-                className="group rounded-2xl border border-emerald-500/20 bg-emerald-950/50 p-6 transition hover:border-emerald-400 hover:bg-emerald-900/60"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-emerald-600/20 px-3 py-1 text-xs font-bold uppercase text-emerald-300">
-                    Écran
-                  </span>
+          <div className="space-y-10">
+            {screensByMosque.map(([mosqueSlug, mosqueScreens]) => (
+              <section key={mosqueSlug}>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-emerald-300">
+                    {mosqueSlug}
+                  </h2>
 
-                  <span className="text-xs text-gray-400">
-                    {screen.is_active ? "Actif" : "Inactif"}
-                  </span>
+                  <Link
+                    href={`/mosquees/${mosqueSlug}`}
+                    className="text-sm font-semibold text-emerald-300 hover:text-emerald-200"
+                  >
+                    Voir la mosquée →
+                  </Link>
                 </div>
 
-                <h2 className="mt-4 text-xl font-bold leading-tight">
-                  {screen.name}
-                </h2>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {mosqueScreens.map((screen) => (
+                    <Link
+                      key={screen.id}
+                      href={`/ecran/${screen.slug}`}
+                      className="group rounded-2xl border border-emerald-500/20 bg-emerald-950/50 p-6 transition hover:border-emerald-400 hover:bg-emerald-900/60"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="rounded-full bg-emerald-600/20 px-3 py-1 text-xs font-bold uppercase text-emerald-300">
+                          Écran
+                        </span>
 
-                {screen.location && (
-                  <p className="mt-1 text-sm text-gray-400">
-                    {screen.location}
-                  </p>
-                )}
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            screen.is_online
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {screen.is_online
+                            ? "En ligne"
+                            : "Hors ligne"}
+                        </span>
+                      </div>
 
-                <p className="mt-4 font-mono text-xs text-gray-500">
-                  /ecran/{screen.slug}
-                </p>
+                      <h3 className="mt-4 text-xl font-bold leading-tight">
+                        {screen.name}
+                      </h3>
 
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-300">
-                  Ouvrir l’affichage
-                  <span className="transition group-hover:translate-x-1">
-                    →
-                  </span>
-                </span>
-              </Link>
+                      {screen.location && (
+                        <p className="mt-1 text-sm text-gray-400">
+                          {screen.location}
+                        </p>
+                      )}
+
+                      <p className="mt-4 font-mono text-xs text-gray-500">
+                        /ecran/{screen.slug}
+                      </p>
+
+                      <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-300">
+                        Ouvrir l’affichage
+                        <span
+                          aria-hidden="true"
+                          className="transition group-hover:translate-x-1"
+                        >
+                          →
+                        </span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

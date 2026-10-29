@@ -17,6 +17,14 @@ class Announcement(models.Model):
         NORMAL = "normal", "Normale"
         HIGH = "high", "Urgente"
 
+    mosque = models.ForeignKey(
+        "content.MosqueProfile",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="announcements",
+        verbose_name="mosquée",
+    )
     target_type = models.CharField(
         "cible",
         max_length=10,

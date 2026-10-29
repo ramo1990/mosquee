@@ -1,12 +1,35 @@
 // src/types/index.ts
 export type Announcement = {
   id: number;
+  mosque?: string | null;
   title: string;
   body: string;
   priority: "low" | "normal" | "high";
-  image: string | null;
+  image?: string | null;
+  is_active: boolean;
+  show_on_screen: boolean;
   starts_at: string;
-  ends_at: string | null;
+  ends_at?: string | null;
+  target_type: "all" | "group" | "screen";
+  target_group?: number | null;
+  target_screen?: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AnnouncementCreatePayload = {
+  mosque?: string | null;
+  target_type: "all" | "group" | "screen";
+  target_group?: number | null;
+  target_screen?: number | null;
+  title: string;
+  body: string;
+  priority: "low" | "normal" | "high";
+  image?: File | null;
+  is_active: boolean;
+  show_on_screen: boolean;
+  starts_at: string;
+  ends_at?: string | null;
 };
 
 export type PrayerTime = {
@@ -110,8 +133,51 @@ export type GalleryImage = {
 
 export type Screen = {
   id: number;
+  mosque?: string | null;
   name: string;
   slug: string;
   location?: string | null;
+  pairing_code?: string | null;
+  is_online?: boolean;
+  last_seen_at?: string | null;
+  announcement_duration?: number;
+  verse_duration?: number;
+  night_mode_start?: string | null;
+  night_mode_end?: string | null;
+  group?: number | null;
+  contents?: ScreenContent[];
+  is_active?: boolean;
+};
+
+export type ScreenContent = {
+  id: number;
+  screen: number;
+  title: string;
+  body?: string | null;
+  image?: string | null;
+  order: number;
   is_active: boolean;
+};
+
+export type DonationCampaign = {
+  id: number;
+  mosque?: string | null;
+  title: string;
+  slug: string;
+  description: string;
+  goal_amount?: string | null;
+  total_raised?: string;
+  is_active: boolean;
+  starts_at: string;
+  ends_at?: string | null;
+};
+
+export type RamadanSchedule = {
+  id: number;
+  mosque?: string | null;
+  date: string;
+  suhoor_end?: string | null;
+  iftar: string;
+  tarawih?: string | null;
+  note?: string | null;
 };

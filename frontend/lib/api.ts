@@ -71,3 +71,33 @@ export async function apiPost<T>(
     body: JSON.stringify(body),
   });
 }
+
+export async function apiPostForm<T>(
+  path: string,
+  formData: FormData
+): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    body: formData,
+    cache: "no-store",
+  });
+
+  let data: unknown = null;
+
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const errorData = data as { detail?: string } | null;
+
+    throw new Error(
+      errorData?.detail ??
+        `Erreur API ${res.status} : ${API_URL}${path}`
+    );
+  }
+
+  return data as T;
+}

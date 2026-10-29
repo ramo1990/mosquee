@@ -1,9 +1,16 @@
-# donations/serializers.py
 from rest_framework import serializers
+
+from content.models import MosqueProfile
+
 from .models import Donation, DonationCampaign
 
 
 class DonationCampaignSerializer(serializers.ModelSerializer):
+    mosque = serializers.SlugRelatedField(
+        slug_field="slug",
+        read_only=True,
+    )
+
     total_raised = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -14,6 +21,7 @@ class DonationCampaignSerializer(serializers.ModelSerializer):
         model = DonationCampaign
         fields = [
             "id",
+            "mosque",
             "title",
             "slug",
             "description",
@@ -26,10 +34,21 @@ class DonationCampaignSerializer(serializers.ModelSerializer):
 
 
 class DonationSerializer(serializers.ModelSerializer):
+    mosque = serializers.SlugRelatedField(
+        slug_field="slug",
+        read_only=True,
+    )
+
+    campaign = serializers.SlugRelatedField(
+        slug_field="slug",
+        read_only=True,
+    )
+
     class Meta:
         model = Donation
         fields = [
             "id",
+            "mosque",
             "reference",
             "campaign",
             "donor_name",
@@ -48,3 +67,39 @@ class DonationSerializer(serializers.ModelSerializer):
             "transaction_id",
             "created_at",
         ]
+
+
+class DonationCreateSerializer(serializers.ModelSerializer):
+    campaign = serializers.SlugRelatedField(
+        slug_field="slug",
+        queryset=DonationCampaign.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = Donation
+        fields = [
+            "campaign",
+            "donor_name",
+            "donor_phone",
+            "donor_email",
+            "amount",
+            "donation_type",
+            "payment_method",
+        ]
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                "Le montant du don doit être supérieur à zéro."
+            )
+
+        return value
+
+    def create(self, validated_data):
+        mosque = self.context.get("mosque")
+
+        validated_data["mosque"] = mosque
+
+        return super().create(validated_data)

@@ -7,12 +7,27 @@ from .models import Screen, ScreenContent, ScreenGroup
 @admin.register(ScreenGroup)
 class ScreenGroupAdmin(admin.ModelAdmin):
     list_display = (
+        "mosque",
         "name",
         "screens_count",
         "created_at",
     )
+    list_filter = ("mosque",)
     search_fields = ("name", "description")
     readonly_fields = ("created_at", "updated_at")
+
+    fieldsets = (
+        (
+            "Groupe",
+            {
+                "fields": (
+                    "mosque",
+                    "name",
+                    "description",
+                )
+            },
+        ),
+    )
 
     @admin.display(description="Écrans")
     def screens_count(self, obj):
@@ -34,6 +49,7 @@ class ScreenContentInline(admin.TabularInline):
 @admin.register(Screen)
 class ScreenAdmin(admin.ModelAdmin):
     list_display = (
+        "mosque",
         "name",
         "slug",
         "location",
@@ -45,6 +61,7 @@ class ScreenAdmin(admin.ModelAdmin):
         "verse_duration",
     )
     list_filter = (
+        "mosque",
         "group",
         "is_online",
         "location",
@@ -55,6 +72,7 @@ class ScreenAdmin(admin.ModelAdmin):
         "location",
         "pairing_code",
     )
+    autocomplete_fields = ("mosque", "group")
     prepopulated_fields = {"slug": ("name",)}
     readonly_fields = (
         "pairing_code",
@@ -71,6 +89,7 @@ class ScreenAdmin(admin.ModelAdmin):
             "Écran",
             {
                 "fields": (
+                    "mosque",
                     "name",
                     "slug",
                     "location",

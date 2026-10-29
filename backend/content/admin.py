@@ -17,15 +17,16 @@ from .models import (
 class MosqueProfileAdmin(admin.ModelAdmin):
     list_display = (
         "name",
+        "slug",
         "city",
         "phone",
         "whatsapp",
         "email",
         "logo_preview",
     )
-    search_fields = ("name", "city", "address", "email")
+    search_fields = ("name", "slug", "city", "address", "email")
     readonly_fields = ("logo_preview", "cover_preview")
-
+    prepopulated_fields = {"slug": ("name",)}
     fieldsets = (
         (
             "Identité",

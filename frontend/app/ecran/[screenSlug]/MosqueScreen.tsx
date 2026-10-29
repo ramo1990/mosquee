@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiGetList } from "@/lib/api";
-import type { Announcement, PrayerTime, QuranVerse, Event } from "@/lib/types";
+import type { Announcement, PrayerTime, QuranVerse, Event, Screen } from "@/lib/types";
 import { useScreenSocket } from "@/lib/useScreenSocket";
 
 
@@ -217,6 +217,8 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
 
+  const [screen, setScreen] = useState<Screen | null>(null);
+
   const slides = useMemo<ScreenSlide[]>(() => {
     const result: ScreenSlide[] = [];
 
@@ -247,6 +249,20 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
   }, [announcements, verses, events]);
 
   const loadData = useCallback(async () => {
+    const screenResult = await Promise.allSettled([
+      apiGet<Screen>(`/ecrans/${screenSlug}/`),
+    ]);
+
+    let mosqueSlug: string | null = null;
+
+    if (screenResult[0].status === "fulfilled") {
+      const currentScreen = screenResult[0].value;
+
+      setScreen(currentScreen);
+
+      mosqueSlug = currentScreen.mosque ?? null;
+    }
+
     const [
       announcementsResult,
       prayersResult,
@@ -254,15 +270,17 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
       eventsResult,
     ] = await Promise.allSettled([
       apiGetList<Announcement>(`/annonces/screen/${screenSlug}/`),
-      apiGet<PrayerTime>("/horaires-prieres/today/"),
+      mosqueSlug
+        ? apiGet<PrayerTime>(
+            `/horaires-prieres/mosque/${mosqueSlug}/today/`
+          )
+        : apiGet<PrayerTime>("/horaires-prieres/today/"),
       apiGetList<QuranVerse>(`/versets/screen/${screenSlug}/`),
-      apiGetList<Event>(`/evenements/upcoming/${screenSlug}/`)
+      apiGetList<Event>(`/evenements/upcoming/${screenSlug}/`),
     ]);
 
     if (announcementsResult.status === "fulfilled") {
-      const nextAnnouncements = announcementsResult.value;
-
-      setAnnouncements(nextAnnouncements);
+      setAnnouncements(announcementsResult.value);
       setAnnouncementsError(false);
     } else {
       setAnnouncementsError(true);
@@ -283,6 +301,7 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
       setVerses(
         versesResult.value.filter((verse) => verse.is_active)
       );
+
       setVersesLoaded(true);
     }
 
@@ -394,8 +413,8 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
           </time>
         </div>
 
-        <p className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
-          {screenName ?? screenSlug}
+        <p className="max-w-[240px] truncate rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
+          {screen?.name ?? screenName ?? screenSlug}
         </p>
       </header>
 
