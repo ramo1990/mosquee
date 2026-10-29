@@ -13,7 +13,9 @@ function LayoutContentInner({
   children: ReactNode;
 }>) {
   const pathname = usePathname();
-  const isEcranPage = pathname === "/ecran";
+
+  // Masquer la navigation sur les pages d'affichage des écrans.
+  const isEcranPage = pathname.includes("/ecrans/");
 
   return (
     <>

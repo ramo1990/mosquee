@@ -48,3 +48,4 @@ media/
 
 # Cache de pip
 pip-wheel-metadata/
+dump.rdb
