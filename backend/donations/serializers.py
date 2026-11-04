@@ -97,9 +97,15 @@ class DonationCreateSerializer(serializers.ModelSerializer):
 
         return value
 
-    def create(self, validated_data):
+    def validate(self, attrs):
         mosque = self.context.get("mosque")
+        campaign = attrs.get("campaign")
 
-        validated_data["mosque"] = mosque
+        if campaign and campaign.mosque_id != mosque.pk:
+            raise serializers.ValidationError({
+                "campaign": (
+                    "Cette campagne n'appartient pas à cette mosquée."
+                )
+            })
 
-        return super().create(validated_data)
+        return attrs

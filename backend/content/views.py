@@ -13,6 +13,7 @@ from .models import (
     MosqueProfile,
     NewsArticle,
     QuranVerse,
+    QuranVerseTarget,
 )
 from .serializers import (
     ContactMessageAdminSerializer,
@@ -117,7 +118,7 @@ class QuranVerseViewSet(viewsets.ModelViewSet):
         queryset = (
             QuranVerse.objects.filter(is_active=True)
             .filter(
-                Q(target_type=QuranVerse.QuranVerseTarget.ALL)
+                Q(target_type=QuranVerseTarget.ALL)
                 | Q(target_screens=screen)
             )
             .order_by("order")

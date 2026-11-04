@@ -98,6 +98,7 @@ export type MosqueProfile = {
   youtube?: string | null;
   logo?: string | null;
   cover_image?: string | null;
+  imam_name?: string | null;
 };
 
 export type NewsArticle = {

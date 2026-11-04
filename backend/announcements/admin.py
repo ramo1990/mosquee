@@ -44,6 +44,7 @@ class AnnouncementAdmin(admin.ModelAdmin):
 
     autocomplete_fields = (
         "created_by",
+        "mosque",
         "target_group",
         "target_screen",
     )
@@ -60,6 +61,14 @@ class AnnouncementAdmin(admin.ModelAdmin):
                     "body",
                     "image",
                     "image_preview",
+                )
+            },
+        ),
+        (
+            "Mosquée",
+            {
+                "fields": (
+                    "mosque",
                 )
             },
         ),

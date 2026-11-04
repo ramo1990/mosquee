@@ -1,8 +1,26 @@
+
 "use client";
 
 import { useState } from "react";
+import { Loader2, Send, CheckCircle2, AlertCircle } from "lucide-react";
 
 import { apiPost } from "@/lib/api";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 
 type ContactForm = {
   full_name: string;
@@ -12,27 +30,44 @@ type ContactForm = {
   message: string;
 };
 
-export default function MosqueContactForm({
-  mosqueSlug,
-}: {
+const initialForm: ContactForm = {
+  full_name: "",
+  phone: "",
+  email: "",
+  subject: "",
+  message: "",
+};
+
+type Props = {
   mosqueSlug: string;
-}) {
+};
+
+export default function MosqueContactForm({ mosqueSlug }: Props) {
+  const [form, setForm] = useState<ContactForm>(initialForm);
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
 
-  const [form, setForm] = useState<ContactForm>({
-    full_name: "",
-    phone: "",
-    email: "",
-    subject: "",
-    message: "",
-  });
+  function updateField<K extends keyof ContactForm>(
+    field: K,
+    value: ContactForm[K]
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    if (status !== "idle") {
+      setStatus("idle");
+    }
+  }
 
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
+
+    if (status === "loading") return;
 
     setStatus("loading");
 
@@ -42,134 +77,183 @@ export default function MosqueContactForm({
         form
       );
 
+      setForm(initialForm);
       setStatus("success");
-
-      setForm({
-        full_name: "",
-        phone: "",
-        email: "",
-        subject: "",
-        message: "",
-      });
     } catch {
       setStatus("error");
     }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
-    >
-      <h2 className="text-xl font-bold text-gray-950">
-        Contacter cette mosquée
-      </h2>
+    <Card className="overflow-hidden rounded-2xl border shadow-sm">
+      <CardHeader className="space-y-2 border-b bg-muted/30 p-6">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+          <Send className="h-5 w-5" />
+        </div>
 
-      <Field
-        label="Nom complet"
-        value={form.full_name}
-        onChange={(value) =>
-          setForm({ ...form, full_name: value })
-        }
-        required
-      />
+        <CardTitle className="text-xl font-bold">
+          Contacter cette mosquée
+        </CardTitle>
 
-      <Field
-        label="Téléphone"
-        value={form.phone}
-        onChange={(value) =>
-          setForm({ ...form, phone: value })
-        }
-      />
+        <CardDescription>
+          Une question ? Besoin d&apos;une information ?
+          Envoyez directement un message à l&apos;équipe
+          de cette mosquée.
+        </CardDescription>
+      </CardHeader>
 
-      <Field
-        label="E-mail"
-        type="email"
-        value={form.email}
-        onChange={(value) =>
-          setForm({ ...form, email: value })
-        }
-      />
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="full_name">
+                Nom complet *
+              </Label>
 
-      <Field
-        label="Sujet"
-        value={form.subject}
-        onChange={(value) =>
-          setForm({ ...form, subject: value })
-        }
-        required
-      />
+              <Input
+                id="full_name"
+                placeholder="Votre nom"
+                value={form.full_name}
+                onChange={(e) =>
+                  updateField("full_name", e.target.value)
+                }
+                required
+                disabled={status === "loading"}
+                autoComplete="name"
+              />
+            </div>
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-semibold text-gray-800">
-          Message
-        </span>
+            <div className="space-y-2">
+              <Label htmlFor="phone">
+                Téléphone {!form.email.trim() && "*"}
+              </Label>
 
-        <textarea
-          required
-          rows={5}
-          value={form.message}
-          onChange={(event) =>
-            setForm({
-              ...form,
-              message: event.target.value,
-            })
-          }
-          className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-emerald-400"
-        />
-      </label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="06 12 34 56 78"
+                value={form.phone}
+                onChange={(e) =>
+                  updateField("phone", e.target.value)
+                }
+                disabled={status === "loading"}
+                autoComplete="tel"
+              />
+            </div>
+          </div>
 
-      <button
-        type="submit"
-        disabled={status === "loading"}
-        className="w-full rounded-xl bg-emerald-800 px-4 py-3 font-semibold text-white transition hover:bg-emerald-900 disabled:opacity-60"
-      >
-        {status === "loading"
-          ? "Envoi..."
-          : "Envoyer le message"}
-      </button>
+          <div className="space-y-2">
+            <Label htmlFor="email">
+              Adresse e-mail {!form.phone.trim() && "*"}
+            </Label>
 
-      {status === "success" && (
-        <p className="text-emerald-700">
-          Votre message a bien été envoyé à cette mosquée.
-        </p>
-      )}
+            <Input
+              id="email"
+              type="email"
+              placeholder="vous@exemple.fr"
+              value={form.email}
+              onChange={(e) =>
+                updateField("email", e.target.value)
+              }
+              required={!form.phone.trim()}
+              disabled={status === "loading"}
+              autoComplete="email"
+            />
 
-      {status === "error" && (
-        <p className="text-red-600">
-          Une erreur est survenue. Réessayez.
-        </p>
-      )}
-    </form>
-  );
-}
+            {!form.phone.trim() && (
+              <p className="text-xs text-muted-foreground">
+                Obligatoire si vous ne renseignez pas de téléphone.
+              </p>
+            )}
+          </div>
 
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-semibold text-gray-800">
-        {label}
-      </span>
+          <div className="space-y-2">
+            <Label htmlFor="subject">
+              Sujet *
+            </Label>
 
-      <input
-        type={type}
-        required={required}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-emerald-400"
-      />
-    </label>
+            <Input
+              id="subject"
+              placeholder="Objet de votre demande"
+              value={form.subject}
+              onChange={(e) =>
+                updateField("subject", e.target.value)
+              }
+              required
+              disabled={status === "loading"}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="message">
+              Votre message *
+            </Label>
+
+            <Textarea
+              id="message"
+              placeholder="Écrivez votre message ici..."
+              rows={5}
+              value={form.message}
+              onChange={(e) =>
+                updateField("message", e.target.value)
+              }
+              required
+              disabled={status === "loading"}
+              className="resize-none"
+            />
+
+            <p className="text-xs text-muted-foreground">
+              Votre message sera transmis directement à
+              l&apos;équipe de la mosquée.
+            </p>
+          </div>
+
+          {status === "success" && (
+            <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600!" />
+
+              <AlertDescription>
+                Votre message a bien été envoyé à cette
+                mosquée. Merci pour votre prise de contact !
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {status === "error" && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+
+              <AlertDescription>
+                Une erreur est survenue lors de l&apos;envoi.
+                Veuillez réessayer.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            disabled={status === "loading"}
+            className="w-full bg-emerald-800 hover:bg-emerald-900"
+            size="lg"
+          >
+            {status === "loading" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Envoi en cours...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Envoyer le message
+              </>
+            )}
+          </Button>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Les champs marqués d&apos;un * sont obligatoires.
+          </p>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
