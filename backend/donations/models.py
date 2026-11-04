@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 
-
+# TODO: éviter la suppression accidentelle de dons lorsqu'une mosquée est supprimée
 class DonationCampaign(models.Model):
     mosque = models.ForeignKey(
         "content.MosqueProfile",

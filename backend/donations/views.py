@@ -39,7 +39,8 @@ class DonationCampaignViewSet(viewsets.ModelViewSet):
     )
     def public_list(self, request):
         queryset = DonationCampaign.objects.filter(
-            is_active=True
+            is_active=True,
+            mosque__isnull=False,
         )
 
         serializer = self.get_serializer(queryset, many=True)
@@ -72,17 +73,21 @@ class MosqueDonationCreateView(CreateAPIView):
     serializer_class = DonationCreateSerializer
     permission_classes = [AllowAny]
 
+    def get_mosque(self):
+        if not hasattr(self, "_mosque"):
+            self._mosque = get_object_or_404(
+                MosqueProfile,
+                slug=self.kwargs["mosque_slug"],
+            )
+        return self._mosque
+    
     def get_serializer_context(self):
         context = super().get_serializer_context()
-
-        mosque = get_object_or_404(
-            MosqueProfile,
-            slug=self.kwargs["mosque_slug"],
-        )
-
-        context["mosque"] = mosque
-
+        context["mosque"] = self.get_mosque()
         return context
+
+    def perform_create(self, serializer):
+        serializer.save(mosque=self.get_mosque())
 
 
 class DonationViewSet(viewsets.ModelViewSet):

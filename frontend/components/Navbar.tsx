@@ -19,7 +19,7 @@ export default function Navbar() {
           className="w-fit rounded-sm text-xl font-bold tracking-tight transition-colors hover:text-emerald-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
           aria-label="Mosquée — Accueil"
         >
-          Mosquée
+          Mosquée CI
         </Link>
 
         <nav

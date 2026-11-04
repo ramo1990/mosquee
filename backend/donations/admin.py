@@ -10,20 +10,24 @@ class DonationInline(admin.TabularInline):
     model = Donation
     extra = 0
     fields = (
+        "reference",
+        "mosque",
         "donor_name",
         "donor_phone",
         "amount",
         "donation_type",
         "payment_method",
         "status",
+        "created_at",
     )
-    readonly_fields = ("reference", "created_at", "updated_at")
-
+    readonly_fields = ("reference", "mosque", "created_at", "updated_at")
+    can_delete = False
 
 @admin.register(DonationCampaign)
 class DonationCampaignAdmin(admin.ModelAdmin):
     list_display = (
         "title",
+        "mosque",
         "goal_amount",
         "total_raised_display",
         "progress_display",
@@ -31,7 +35,7 @@ class DonationCampaignAdmin(admin.ModelAdmin):
         "starts_at",
         "ends_at",
     )
-    list_filter = ("is_active", "starts_at")
+    list_filter = ("mosque", "is_active", "starts_at")
     search_fields = ("title", "description")
     prepopulated_fields = {"slug": ("title",)}
     readonly_fields = ("created_at",)
@@ -62,10 +66,12 @@ class DonationCampaignAdmin(admin.ModelAdmin):
         )
 
 
+
 @admin.register(Donation)
 class DonationAdmin(admin.ModelAdmin):
     list_display = (
         "reference",
+        "mosque",
         "donor_name",
         "donor_phone",
         "amount",
@@ -75,29 +81,42 @@ class DonationAdmin(admin.ModelAdmin):
         "campaign",
         "created_at",
     )
+
     list_filter = (
+        "mosque",
         "status",
         "donation_type",
         "payment_method",
         "campaign",
         "created_at",
     )
+
     search_fields = (
         "reference",
+        "mosque__name",
         "donor_name",
         "donor_phone",
         "donor_email",
         "transaction_id",
     )
+
     readonly_fields = (
         "reference",
         "created_at",
         "updated_at",
     )
+
     date_hierarchy = "created_at"
     list_per_page = 25
+    list_select_related = ("mosque", "campaign")
 
     fieldsets = (
+        (
+            "Mosquée",
+            {
+                "fields": ("mosque",),
+            },
+        ),
         (
             "Donateur",
             {

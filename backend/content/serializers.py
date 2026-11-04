@@ -31,6 +31,7 @@ class MosqueProfileSerializer(serializers.ModelSerializer):
             "youtube",
             "logo",
             "cover_image",
+            "imam_name",
         ]
 
 

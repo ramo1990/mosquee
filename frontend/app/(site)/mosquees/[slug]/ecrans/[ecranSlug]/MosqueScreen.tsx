@@ -7,6 +7,8 @@ import type { Announcement, PrayerTime, QuranVerse, Event, Screen } from "@/lib/
 import { useScreenSocket } from "@/lib/useScreenSocket";
 
 
+const CONTENT_VIEW_DURATION = 30_000;
+
 type ScreenSlide =
   | {
       type: "announcement";
@@ -218,6 +220,7 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
   const [slideIndex, setSlideIndex] = useState(0);
 
   const [screen, setScreen] = useState<Screen | null>(null);
+  const [showContentView, setShowContentView] = useState(false);
 
   const slides = useMemo<ScreenSlide[]>(() => {
     const result: ScreenSlide[] = [];
@@ -356,16 +359,30 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
     };
   }, [loadData]);
 
-  // Rotation automatique des annonces.
+  // Alterne entre les horaires et les informations toutes les 30 secondes.
   useEffect(() => {
-    if (slides.length <= 1) return;
+    if (slides.length === 0) {
+      setShowContentView(false);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setShowContentView((current) => !current);
+    }, CONTENT_VIEW_DURATION);
+
+    return () => window.clearInterval(interval);
+  }, [slides.length]);
+
+  // Fait défiler les annonces, versets et événements.
+  useEffect(() => {
+    if (!showContentView || slides.length <= 1) return;
 
     const interval = window.setInterval(() => {
       setSlideIndex((index) => (index + 1) % slides.length);
     }, ANNOUNCEMENT_DURATION);
 
     return () => window.clearInterval(interval);
-  }, [slides.length]);
+  }, [showContentView, slides.length]);
 
   const safeSlideIndex = slides.length > 0 ? slideIndex % slides.length : 0;
   const currentSlide = slides[safeSlideIndex];
@@ -413,7 +430,7 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
           </time>
         </div>
 
-        <p className="max-w-[240px] truncate rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
+        <p className="max-w-60 truncate rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
           {screen?.name ?? screenName ?? screenSlug}
         </p>
       </header>
@@ -497,250 +514,203 @@ export default function MosqueScreenPage({screenSlug, screenName}: {screenSlug: 
 
       </section>
 
-      
-      {/* Horaires des prières du jour — compact */}
-      <section
-        aria-labelledby="prayer-times-heading"
-        className="mt-2 shrink-0"
-      >
-        <h2
-          id="prayer-times-heading"
-          className="mb-1 text-center text-sm font-bold uppercase tracking-wider text-emerald-300"
-        >
-          Horaires des prières du jour
-        </h2>
+      {/* Zone principale alternée : horaires ou informations */}
+      <section className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
+        {showContentView && slides.length > 0 ? (
+          <div
+            aria-live="polite"
+            aria-atomic="true"
+            className={`relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden rounded-2xl border p-[clamp(0.6rem,1.2vw,1.5rem)] ${
+              isUrgent
+                ? "border-red-500/40 bg-linear-to-br from-red-950 via-red-950 to-[#210b0b]"
+                : "border-emerald-500/20 bg-linear-to-br from-[#10271f] to-[#0b1914]"
+            }`}
+          >
+            {isUrgent && (
+              <div
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 w-1.5 bg-red-500"
+              />
+            )}
 
-        <div className="grid grid-cols-5 gap-2">
-          {prayers.map((prayer) => {
-            const time = getPrayerTime(prayerTime, prayer.key);
-
-            const iqamaKey = `${prayer.key}_iqama` as
-              | "fajr_iqama"
-              | "dhuhr_iqama"
-              | "asr_iqama"
-              | "maghrib_iqama"
-              | "isha_iqama";
-
-            const iqama = prayerTime?.[iqamaKey]?.slice(0, 5) ?? "--:--";
-            const isNext = nextPrayer?.label === prayer.label;
-
-            return (
+            {currentSlide?.type === "announcement" ? (
               <article
-                key={prayer.key}
-                className={`flex min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-1.5 text-center ${
-                  isNext
-                    ? "border-amber-400 bg-amber-400/10"
-                    : "border-white/10 bg-white/3"
-                }`}
+                key={`announcement-${currentSlide.data.id}`}
+                className="mx-auto w-full max-w-7xl animate-in fade-in duration-500"
               >
-                <p className="text-xs font-bold text-gray-200 sm:text-sm">
-                  {prayer.label}
-                </p>
-
-                <p
-                  lang="ar"
-                  dir="rtl"
-                  className="text-xs text-emerald-300"
-                >
-                  {prayer.arabic}
-                </p>
-
-                <p className="mt-1 text-[10px] text-gray-500">
-                  ADHAN
-                </p>
-                <p
-                  className={`text-lg font-extrabold leading-tight tabular-nums sm:text-xl ${
-                    isNext ? "text-amber-300" : "text-white"
-                  }`}
-                >
-                  {time}
-                </p>
-
-                <div className="my-1 h-px w-3/4 bg-white/10" />
-
-                <p className="text-[10px] text-gray-500">
-                  IQAMA
-                </p>
-                <p className="text-sm font-bold leading-tight tabular-nums text-emerald-300 sm:text-base">
-                  {iqama}
-                </p>
-
-                {isNext && (
-                  <span className="mt-0.5 text-[9px] font-bold uppercase text-amber-300">
-                    Prochaine
+                {isUrgent && (
+                  <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold tracking-wider text-white sm:text-sm">
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white"
+                    />
+                    ANNONCE URGENTE
                   </span>
                 )}
+
+                <h3 className="wrap-break-word text-[clamp(1.5rem,3vw,4rem)] font-bold leading-tight tracking-tight">
+                  {currentSlide.data.title}
+                </h3>
+
+                <p className="mt-4 whitespace-pre-line wrap-break-word text-[clamp(1rem,1.8vw,2.2rem)] leading-snug text-gray-200">
+                  {currentSlide.data.body}
+                </p>
               </article>
-            );
-          })}
-        </div>
-
-        {prayersError && (
-          <p className="mt-1 text-center text-xs text-red-400">
-            Impossible de récupérer les horaires des prières.
-          </p>
-        )}
-      </section>
-
-
-      {/* Annonces */}
-      <section
-        aria-labelledby="announcements-heading"
-        className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden"
-      >
-        <div className="mb-1 flex shrink-0 flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2
-              id="announcements-heading"
-              className="text-[clamp(1.1rem,1.8vw,2rem)] font-bold"
-            >
-              Informations de la communauté
-            </h2>
-          </div>
-
-          {slides.length > 0 && (
-            <p
-              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm tabular-nums text-gray-300"
-              aria-label={`Diapositive ${slideIndex + 1} sur ${slides.length}`}
-            >
-              {safeSlideIndex + 1} / {slides.length}
-            </p>
-          )}
-        </div>
-
-
-        <div
-          aria-live="polite"
-          aria-atomic="true"
-          className={`relative flex min-h-0 flex-1 flex-col justify-center overflow-hidden rounded-2xl border p-[clamp(0.4rem,0.8vw,1rem)] ${
-            isUrgent
-              ? "border-red-500/40 bg-linear-to-br from-red-950 via-red-950 to-[#210b0b]"
-              : "border-emerald-500/20 bg-linear-to-br from-[#10271f] to-[#0b1914]"
-          }`}
-        >
-          {isUrgent && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-y-0 left-0 w-1.5 bg-red-500"
-            />
-          )}
-
-          {currentSlide?.type === "announcement" ? (
-            <article
-              key={`announcement-${currentSlide.data.id}`}
-              className="mx-auto w-full max-w-7xl animate-in fade-in duration-500"
-            >
-              {isUrgent && (
-                <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 text-xs font-bold tracking-wider text-white sm:text-sm">
-                  <span
-                    aria-hidden="true"
-                    className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-white"
-                  />
-                  ANNONCE URGENTE
-                </span>
-              )}
-
-              <h3 className="wrap-break-word text-[clamp(1.1rem,2.2vw,2.8rem)] font-bold leading-tight tracking-tight">
-                {currentSlide.data.title}
-              </h3>
-
-              <p className="mt-2 whitespace-pre-line wrap-break-word text-[clamp(0.9rem,1.35vw,1.65rem)] leading-snug text-gray-200">
-                {currentSlide.data.body}
-              </p>
-            </article>
-          ) : currentSlide?.type === "verse" ? (
-            <article
-              key={`verse-${currentSlide.reference}`}
-              className="mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center text-center animate-in fade-in duration-500"
-            >
-              <p
-                dir="rtl"
-                lang="ar"
-                className="text-[clamp(1.4rem,2.8vw,3.5rem)] leading-snug text-emerald-300"
+            ) : currentSlide?.type === "verse" ? (
+              <article
+                key={`verse-${currentSlide.reference}`}
+                className="mx-auto flex h-full w-full max-w-7xl flex-col items-center justify-center text-center animate-in fade-in duration-500"
               >
-                {currentSlide.arabic}
-              </p>
+                <p
+                  dir="rtl"
+                  lang="ar"
+                  className="text-[clamp(2rem,4vw,5rem)] leading-snug text-emerald-300"
+                >
+                  {currentSlide.arabic}
+                </p>
 
-              <p className="mt-3 max-w-6xl text-[clamp(0.9rem,1.3vw,1.6rem)] leading-snug text-gray-200">
-                {currentSlide.translation}
-              </p>
+                <p className="mt-5 max-w-6xl text-[clamp(1rem,1.8vw,2.2rem)] leading-snug text-gray-200">
+                  {currentSlide.translation}
+                </p>
 
-              <p className="mt-2 text-[clamp(0.75rem,0.9vw,1rem)] text-gray-500">
-                {currentSlide.reference}
-              </p>
-            </article>
-          ) : currentSlide?.type === "event" ? (
-            <article
-              key={`event-${currentSlide.title}`}
-              className="mx-auto w-full max-w-7xl animate-in fade-in duration-500"
+                <p className="mt-3 text-[clamp(0.85rem,1.1vw,1.3rem)] text-gray-500">
+                  {currentSlide.reference}
+                </p>
+              </article>
+            ) : currentSlide?.type === "event" ? (
+              <article
+                key={`event-${currentSlide.title}`}
+                className="mx-auto w-full max-w-7xl animate-in fade-in duration-500"
+              >
+                <span className="mb-3 inline-block rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold sm:text-sm">
+                  ÉVÉNEMENT
+                </span>
+
+                <h3 className="wrap-break-word text-[clamp(1.5rem,3vw,3.5rem)] font-bold leading-tight">
+                  {currentSlide.title}
+                </h3>
+
+                <p className="mt-3 text-[clamp(1rem,1.5vw,2rem)] text-emerald-300">
+                  {new Date(currentSlide.starts_at).toLocaleString("fr-FR")}
+                </p>
+
+                {currentSlide.location && (
+                  <p className="mt-2 text-[clamp(0.9rem,1.2vw,1.6rem)] text-gray-400">
+                    {currentSlide.location}
+                  </p>
+                )}
+
+                <p className="mt-4 whitespace-pre-line text-[clamp(1rem,1.5vw,2rem)] leading-snug text-gray-200">
+                  {currentSlide.description}
+                </p>
+              </article>
+            ) : null}
+
+            {slides.length > 1 && (
+              <div
+                className="mt-[clamp(0.5rem,1vh,1rem)] flex shrink-0 items-center justify-center gap-2"
+                aria-hidden="true"
+              >
+                {slides.slice(0, 12).map((slide, index) => (
+                  <span
+                    key={index}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      index === safeSlideIndex
+                        ? "w-8 bg-emerald-400"
+                        : "w-2 bg-white/20"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
+            {/* Shuruq · Prochaine prière · Jumua */}
+
+            {/* Horaires des prières du jour */}
+            <section
+              aria-labelledby="prayer-times-heading"
+              className="shrink-0"
             >
-              <span className="mb-2 inline-block rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold sm:text-sm">
-                ÉVÉNEMENT
-              </span>
+              <h2
+                id="prayer-times-heading"
+                className="mb-1 text-center text-sm font-bold uppercase tracking-wider text-emerald-300"
+              >
+                Horaires des prières du jour
+              </h2>
 
-              <h3 className="wrap-break-word text-[clamp(1.1rem,2.2vw,2.5rem)] font-bold leading-tight">
-                {currentSlide.title}
-              </h3>
+              <div className="grid grid-cols-5 gap-2">
+                {prayers.map((prayer) => {
+                  const time = getPrayerTime(prayerTime, prayer.key);
 
-              <p className="mt-2 text-[clamp(0.85rem,1.2vw,1.5rem)] text-emerald-300">
-                {new Date(currentSlide.starts_at).toLocaleString("fr-FR")}
-              </p>
+                  const iqamaKey = `${prayer.key}_iqama` as
+                    | "fajr_iqama"
+                    | "dhuhr_iqama"
+                    | "asr_iqama"
+                    | "maghrib_iqama"
+                    | "isha_iqama";
 
-              {currentSlide.location && (
-                <p className="mt-1 text-[clamp(0.8rem,1vw,1.2rem)] text-gray-400">
-                  {currentSlide.location}
+                  const iqama = prayerTime?.[iqamaKey]?.slice(0, 5) ?? "--:--";
+                  const isNext = nextPrayer?.label === prayer.label;
+
+                  return (
+                    <article
+                      key={prayer.key}
+                      className={`flex min-w-0 flex-col items-center justify-center rounded-xl border px-1 py-1.5 text-center ${
+                        isNext
+                          ? "border-amber-400 bg-amber-400/10"
+                          : "border-white/10 bg-white/3"
+                      }`}
+                    >
+                      <p className="text-xs font-bold text-gray-200 sm:text-sm">
+                        {prayer.label}
+                      </p>
+
+                      <p lang="ar" dir="rtl" className="text-xs text-emerald-300">
+                        {prayer.arabic}
+                      </p>
+
+                      <p className="mt-1 text-[10px] text-gray-500">
+                        ADHAN
+                      </p>
+
+                      <p
+                        className={`text-lg font-extrabold leading-tight tabular-nums sm:text-xl ${
+                          isNext ? "text-amber-300" : "text-white"
+                        }`}
+                      >
+                        {time}
+                      </p>
+
+                      <div className="my-1 h-px w-3/4 bg-white/10" />
+
+                      <p className="text-[10px] text-gray-500">
+                        IQAMA
+                      </p>
+
+                      <p className="text-sm font-bold leading-tight tabular-nums text-emerald-300 sm:text-base">
+                        {iqama}
+                      </p>
+
+                      {isNext && (
+                        <span className="mt-0.5 text-[9px] font-bold uppercase text-amber-300">
+                          Prochaine
+                        </span>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+
+              {prayersError && (
+                <p className="mt-1 text-center text-xs text-red-400">
+                  Impossible de récupérer les horaires des prières.
                 </p>
               )}
-
-              <p className="mt-2 whitespace-pre-line text-[clamp(0.85rem,1.2vw,1.5rem)] leading-snug text-gray-200">
-                {currentSlide.description}
-              </p>
-            </article>
-          ) : announcementsError ? (
-            <div className="py-4 text-center">
-              <h3 className="text-[clamp(1rem,1.5vw,1.5rem)] font-semibold text-gray-200">
-                Annonces temporairement indisponibles
-              </h3>
-              <p className="mt-2 text-sm text-gray-400">
-                Une nouvelle tentative sera effectuée automatiquement.
-              </p>
-            </div>
-          ) : !announcementsLoaded && !versesLoaded && !eventsLoaded ? (
-            <div className="py-4 text-center">
-              <p className="text-[clamp(1rem,1.5vw,1.5rem)] text-gray-300">
-                Chargement des informations...
-              </p>
-            </div>
-          ) : (
-            <div className="py-4 text-center">
-              <p className="text-[clamp(1.2rem,2vw,2rem)] font-semibold text-gray-200">
-                Aucune information pour le moment
-              </p>
-              <p className="mt-2 text-sm text-gray-400">
-                Les annonces, versets et événements apparaîtront ici.
-              </p>
-            </div>
-          )}
-
-          {slides.length > 1 && (
-            <div
-              className="mt-[clamp(0.5rem,1vh,1rem)] flex shrink-0 items-center justify-center gap-2"
-              aria-hidden="true"
-            >
-              {slides.slice(0, 12).map((slide, index) => (
-                <span
-                  key={index}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === safeSlideIndex
-                      ? "w-8 bg-emerald-400"
-                      : "w-2 bg-white/20"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
+            </section>
+          </div>
+        )}
       </section>
 
       {/* Pied d'écran : toujours visible en bas */}

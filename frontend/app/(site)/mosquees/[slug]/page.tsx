@@ -40,16 +40,22 @@ function SectionHeading({
 function LoadingCard({ lines = 3 }: { lines?: number }) {
   return (
     <div
+      role="status"
       aria-label="Chargement du contenu"
-      className="animate-pulse rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+      className="animate-pulse rounded-2xl border bg-card p-6"
     >
-      <div className="mb-5 h-5 w-2/5 rounded-lg bg-gray-200" />
+      <span className="sr-only">Chargement...</span>
+
+      <div className="mb-5 h-5 w-2/5 rounded-lg bg-muted" />
+
       <div className="space-y-3">
         {Array.from({ length: lines }, (_, index) => (
           <div
             key={index}
-            className="h-3 rounded-full bg-gray-100"
-            style={{ width: `${100 - index * 12}%` }}
+            className="h-3 rounded-full bg-muted"
+            style={{
+              width: `${100 - index * 12}%`,
+            }}
           />
         ))}
       </div>
@@ -65,7 +71,7 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
-function formatDate(date: string) {
+function formatDate(date: string): string {
   const parsed = new Date(date);
 
   if (Number.isNaN(parsed.getTime())) {
@@ -131,6 +137,27 @@ async function MosqueHero({ slug }: { slug: string }) {
             </p>
           )}
 
+          {mosque.imam_name && (
+            <div className="mt-5 inline-flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-400/20 text-lg"
+              >
+                🕌
+              </span>
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-emerald-200">
+                  Imam
+                </p>
+
+                <p className="text-sm font-semibold text-white sm:text-base">
+                  {mosque.imam_name}
+                </p>
+              </div>
+            </div>
+          )}
+
           {mosque.description && (
             <p className="mt-5 max-w-2xl text-base leading-7 text-emerald-50/90 sm:text-lg">
               {mosque.description}
@@ -181,26 +208,44 @@ function getCurrentTimestamp(): number {
 }
 
 async function MosqueEvents({ slug }: { slug: string }) {
-  const events = await apiGetList<Event>(
-    `/evenements/mosquee/${slug}/`
-  );
+  let events: Event[] = [];
+  
+  try {
+    events = await apiGetList<Event>(
+      `/evenements/mosquee/${slug}/`
+    );
+  } catch (error) {
+    console.error("Erreur événements :", error);
+
+    return (
+      <EmptyState>
+        Impossible de charger les événements.
+      </EmptyState>
+    );
+  }
 
   const now = getCurrentTimestamp();
 
   const latest = events
     .filter((event) => {
-      const date = new Date(event.starts_at).getTime();
+      const timestamp = new Date(
+        event.starts_at
+      ).getTime();
 
-      return Number.isFinite(date) && date >= now;
+      return (
+        Number.isFinite(timestamp) &&
+        timestamp >= now
+      );
     })
-    .sort(
-      (a, b) =>
+    .sort((a, b) => {
+      return (
         new Date(a.starts_at).getTime() -
         new Date(b.starts_at).getTime()
-    )
+      );
+    })
     .slice(0, 3);
 
-  if (latest.length === 0) {
+  if (!latest.length) {
     return (
       <EmptyState>
         Aucun événement à venir pour le moment.
@@ -213,13 +258,13 @@ async function MosqueEvents({ slug }: { slug: string }) {
       {latest.map((event) => (
         <article
           key={event.id}
-          className="group rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg"
+          className="group rounded-2xl border bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg"
         >
-          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-xl text-emerald-800">
-            <span aria-hidden="true">📅</span>
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
+            📅
           </div>
 
-          <h3 className="text-lg font-bold text-gray-950">
+          <h3 className="text-lg font-bold">
             {event.title}
           </h3>
 
@@ -228,7 +273,7 @@ async function MosqueEvents({ slug }: { slug: string }) {
           </p>
 
           {event.location && (
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-muted-foreground">
               {event.location}
             </p>
           )}
@@ -352,16 +397,25 @@ async function MosqueGallery({ slug }: { slug: string }) {
 }
 
 async function MosqueDonations({ slug }: { slug: string }) {
-  const campaigns = await apiGetList<DonationCampaign>(
-    `/campagnes-dons/mosquee/${slug}/`
-  );
+  let campaigns: DonationCampaign[] = [];
+
+  try {
+    campaigns = await apiGetList<DonationCampaign>(
+      `/campagnes-dons/mosquee/${slug}/`
+    );
+  } catch (error) {
+    console.error(
+      "Erreur lors du chargement des campagnes :",
+      error
+    );
+  }
 
   return (
     <MosqueDonationForm
       mosqueSlug={slug}
-      campaigns={campaigns.map((campaign) => ({
-        slug: campaign.slug,
-        title: campaign.title,
+      campaigns={campaigns.map(({ slug, title }) => ({
+        slug,
+        title,
       }))}
     />
   );

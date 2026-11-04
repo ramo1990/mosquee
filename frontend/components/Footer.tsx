@@ -24,7 +24,7 @@ export default function Footer() {
               aria-label="Mosquée — Accueil"
               className="inline-flex rounded-sm text-xl font-bold tracking-tight text-white transition-colors hover:text-amber-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-400"
             >
-              Mosquée<span className="text-amber-400">.</span>
+              Mosquée CI
             </Link>
 
             <p className="mt-3 text-sm leading-6 text-gray-400">

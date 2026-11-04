@@ -33,6 +33,8 @@ class MosqueProfileAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "name",
+                    "slug",
+                    "imam_name",
                     "slogan",
                     "description",
                     "logo",

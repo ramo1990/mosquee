@@ -32,6 +32,13 @@ class MosqueProfile(models.Model):
         null=True,
         blank=True,
     )
+    imam_name = models.CharField(
+        "nom de l’imam",
+        max_length=150,
+        null=True,
+        blank=True,
+        help_text="Ex : Imam Moussa Traoré",
+    )
     phone = models.CharField("téléphone", max_length=30, null=True, blank=True)
     whatsapp = models.CharField("WhatsApp", max_length=30, null=True, blank=True)
     email = models.EmailField("e-mail", null=True, blank=True)
