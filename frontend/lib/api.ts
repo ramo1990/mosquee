@@ -1,6 +1,7 @@
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8004/api";
+import type { User, UserFormData } from "./types";
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8004/api";
 
 type PaginatedResponse<T> = {
   count?: number;
@@ -9,47 +10,73 @@ type PaginatedResponse<T> = {
   results?: T[];
 };
 
+function getCookie(name: string) {
+  if (typeof document === "undefined") return null;
+
+  const match = document.cookie.match(
+    new RegExp(`(^| )${name}=([^;]+)`)
+  );
+
+  return match ? decodeURIComponent(match[2]) : null;
+}
 
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_URL}${path}`;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    ...(options.headers as Record<string, string>),
+  };
 
-  const res = await fetch(url, {
+  const isFormData = options.body instanceof FormData;
+
+  if (options.body && !isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (options.method && options.method !== "GET") {
+    const csrfToken = getCookie("csrftoken");
+
+    if (csrfToken) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
     cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
+    credentials: "include",
   });
 
   let data: unknown = null;
 
   try {
-    data = await res.json();
+    data = await response.json();
   } catch {
     data = null;
   }
 
-  if (!res.ok) {
+  if (!response.ok) {
     const errorData = data as { detail?: string } | null;
 
     throw new Error(
       errorData?.detail ??
-        `Erreur API ${res.status} : ${url}`
+        `Erreur API ${response.status} : ${API_URL}${path}`
     );
+  }
+
+  if (response.status === 204 || data === null) {
+    return undefined as T;
   }
 
   return data as T;
 }
 
-
 export async function apiGet<T>(path: string): Promise<T> {
   return request<T>(path);
 }
-
 
 export async function apiGetList<T>(path: string): Promise<T[]> {
   const data = await request<T[] | PaginatedResponse<T>>(path);
@@ -58,17 +85,16 @@ export async function apiGetList<T>(path: string): Promise<T[]> {
     return data;
   }
 
-  return data.results ?? [];
+  return data?.results ?? [];
 }
-
 
 export async function apiPost<T>(
   path: string,
-  body: unknown
+  body?: unknown
 ): Promise<T> {
   return request<T>(path, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
 
@@ -76,28 +102,89 @@ export async function apiPostForm<T>(
   path: string,
   formData: FormData
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  return request<T>(path, {
     method: "POST",
     body: formData,
-    cache: "no-store",
   });
+}
 
-  let data: unknown = null;
+export async function apiPatch<T>(
+  path: string,
+  body: unknown
+): Promise<T> {
+  return request<T>(path, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
 
-  try {
-    data = await res.json();
-  } catch {
-    data = null;
-  }
+export async function apiPut<T>(
+  path: string,
+  body: unknown
+): Promise<T> {
+  return request<T>(path, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
 
-  if (!res.ok) {
-    const errorData = data as { detail?: string } | null;
+export async function apiDelete(path: string): Promise<void> {
+  await request<void>(path, {
+    method: "DELETE",
+  });
+}
 
-    throw new Error(
-      errorData?.detail ??
-        `Erreur API ${res.status} : ${API_URL}${path}`
-    );
-  }
+export async function apiGetCurrentUser(): Promise<User> {
+  return apiGet<User>("/auth/me/");
+}
 
-  return data as T;
+export async function apiUpdateCurrentUser(
+  data: Partial<User>
+): Promise<User> {
+  return apiPatch<User>("/auth/me/", data);
+}
+
+export async function apiLogin(
+  username: string,
+  password: string
+): Promise<User> {
+  return apiPost<User>("/auth/login/", {
+    username,
+    password,
+  });
+}
+
+export async function apiLogout(): Promise<void> {
+  await apiPost("/auth/logout/");
+}
+
+export async function apiGetUsers(): Promise<User[]> {
+  return apiGetList<User>("/users/");
+}
+
+export async function apiCreateUser(
+  data: UserFormData
+): Promise<User> {
+  return apiPost<User>("/users/", data);
+}
+
+export async function apiUpdateUser(
+  id: number,
+  data: Partial<UserFormData>
+): Promise<User> {
+  return apiPatch<User>(`/users/${id}/`, data);
+}
+
+export async function apiDeleteUser(id: number): Promise<void> {
+  await apiDelete(`/users/${id}/`);
+}
+
+export async function apiPatchForm<T>(
+  path: string,
+  formData: FormData
+): Promise<T> {
+  return request<T>(path, {
+    method: "PATCH",
+    body: formData,
+  });
 }
