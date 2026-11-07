@@ -182,3 +182,48 @@ export type RamadanSchedule = {
   tarawih?: string | null;
   note?: string | null;
 };
+
+export type UserRole =
+  | "super_admin"
+  | "mosque_admin"
+  | "committee"
+  | "imam"
+  | "teacher"
+  | "screen_manager"
+  | "member";
+
+export type User = {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  role: UserRole;
+  photo: string | null;
+  mosque: string | null;
+  is_active: boolean;
+  date_joined: string;
+};
+
+export type UserFormData = {
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+  mosque: string;
+  password?: string;
+  is_active: boolean;
+};
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: "Super administrateur",
+  mosque_admin: "Administrateur mosquée",
+  committee: "Membre du comité",
+  imam: "Imam",
+  teacher: "Enseignant",
+  screen_manager: "Responsable écran",
+  member: "Fidèle",
+};
