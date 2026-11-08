@@ -1,8 +1,12 @@
 from django.utils import timezone
+from django.db.models import Q
 
 from rest_framework import generics, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny
+
 from django.shortcuts import get_object_or_404
 
 from config.permissions import IsAdminOrStaff
@@ -25,6 +29,9 @@ from .serializers import (
     NewsArticleListSerializer,
     QuranVerseSerializer,
 )
+
+from core.permissions import MosqueScopedViewSetMixin
+from screens.models import Screen
 
 
 class MosqueProfileListView(generics.ListAPIView):
@@ -90,25 +97,52 @@ class GalleryAlbumViewSet(viewsets.ReadOnlyModelViewSet):
         return GalleryAlbumDetailSerializer
 
 
-class QuranVerseViewSet(viewsets.ModelViewSet):
-    queryset = QuranVerse.objects.all()
+class QuranVerseViewSet(
+    MosqueScopedViewSetMixin,
+    viewsets.ModelViewSet,
+):
     serializer_class = QuranVerseSerializer
     permission_classes = [IsAdminOrStaff]
+
     filterset_fields = ["is_active", "target_type"]
     search_fields = ["reference", "arabic", "translation"]
     ordering_fields = ["order"]
 
+    def get_queryset(self):
+        return self.get_scoped_queryset(
+            QuranVerse.objects.all()
+        )
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if not user.is_super_admin:
+            if not user.mosque:
+                raise PermissionDenied(
+                    "Vous n'êtes associé à aucune mosquée."
+                )
+
+            serializer.save(mosque=user.mosque)
+        else:
+            serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        self.validate_mosque_access(instance)
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self.validate_mosque_access(instance)
+        instance.delete()
+
     @action(
         detail=False,
         methods=["get"],
-        permission_classes=[permissions.AllowAny],
+        permission_classes=[AllowAny],
         url_path=r"screen/(?P<screen_slug>[-\w]+)",
     )
     def for_screen(self, request, screen_slug=None):
-        from django.db.models import Q
-        from django.shortcuts import get_object_or_404
-        from screens.models import Screen
-
         screen = get_object_or_404(
             Screen,
             slug=screen_slug,
@@ -135,11 +169,15 @@ class ContactMessageView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-class ContactMessageAdminViewSet(viewsets.ModelViewSet):
-    queryset = ContactMessage.objects.order_by("-created_at")
+class ContactMessageAdminViewSet(
+    MosqueScopedViewSetMixin,
+    viewsets.ModelViewSet,
+):
     serializer_class = ContactMessageAdminSerializer
     permission_classes = [IsAdminOrStaff]
+
     filterset_fields = ["is_read"]
+
     search_fields = [
         "full_name",
         "phone",
@@ -147,6 +185,21 @@ class ContactMessageAdminViewSet(viewsets.ModelViewSet):
         "subject",
         "message",
     ]
+
+    def get_queryset(self):
+        return self.get_scoped_queryset(
+            ContactMessage.objects.order_by("-created_at")
+        )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        self.validate_mosque_access(instance)
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self.validate_mosque_access(instance)
+        instance.delete()
 
 
 class MosqueNewsListView(generics.ListAPIView):

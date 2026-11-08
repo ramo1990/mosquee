@@ -1,16 +1,24 @@
-# events/views.py
-from django.utils import timezone
-from content.models import MosqueProfile
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from screens.models import Screen
+from django.utils import timezone
+
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from config.permissions import IsMosqueStaff
-from .models import Event, EventCategory, EventRegistration, EventTarget
+from core.permissions import MosqueScopedViewSetMixin
+from content.models import MosqueProfile
+from screens.models import Screen
+
+from .models import (
+    Event,
+    EventCategory,
+    EventRegistration,
+    EventTarget,
+)
 from .serializers import (
     EventCategorySerializer,
     EventRegistrationSerializer,
@@ -22,27 +30,68 @@ class EventCategoryViewSet(viewsets.ModelViewSet):
     queryset = EventCategory.objects.all()
     serializer_class = EventCategorySerializer
     permission_classes = [IsMosqueStaff]
+
     search_fields = ["name"]
     ordering_fields = ["name"]
 
 
-class EventViewSet(viewsets.ModelViewSet):
+class EventViewSet(
+    MosqueScopedViewSetMixin,
+    viewsets.ModelViewSet,
+):
     queryset = Event.objects.select_related("category")
     serializer_class = EventSerializer
     permission_classes = [IsMosqueStaff]
+
     filterset_fields = [
         "status",
         "category",
         "registration_required",
     ]
+
     search_fields = ["title", "description", "location"]
     ordering_fields = ["starts_at", "created_at", "title"]
 
+    def get_queryset(self):
+        return self.get_scoped_queryset(
+            Event.objects.select_related("category")
+        )
+
     def get_permissions(self):
-        if self.action in ["list", "retrieve", "upcoming", "register"]:
+        if self.action in [
+            "list",
+            "retrieve",
+            "upcoming_all",
+            "upcoming_for_screen",
+            "register",
+            "by_mosque",
+        ]:
             return [AllowAny()]
 
         return super().get_permissions()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if not user.is_super_admin:
+            if not user.mosque:
+                raise PermissionDenied(
+                    "Vous n'êtes associé à aucune mosquée."
+                )
+
+            serializer.save(mosque=user.mosque)
+        else:
+            serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        self.validate_mosque_access(instance)
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self.validate_mosque_access(instance)
+        instance.delete()
 
     @action(
         detail=False,
@@ -51,10 +100,8 @@ class EventViewSet(viewsets.ModelViewSet):
         url_path="upcoming",
     )
     def upcoming_all(self, request):
-        now = timezone.now()
-
         queryset = (
-            self.get_queryset()
+            Event.objects
             .filter(
                 starts_at__gte=timezone.now(),
                 status=Event.Status.PUBLISHED,
@@ -73,8 +120,6 @@ class EventViewSet(viewsets.ModelViewSet):
         url_path=r"upcoming/(?P<screen_slug>[-\w]+)",
     )
     def upcoming_for_screen(self, request, screen_slug=None):
-        now = timezone.now()
-
         screen = get_object_or_404(
             Screen,
             slug=screen_slug,
@@ -82,9 +127,9 @@ class EventViewSet(viewsets.ModelViewSet):
         )
 
         queryset = (
-            self.get_queryset()
+            Event.objects
             .filter(
-                starts_at__gte=now,
+                starts_at__gte=timezone.now(),
                 status=Event.Status.PUBLISHED,
             )
             .filter(
@@ -95,6 +140,7 @@ class EventViewSet(viewsets.ModelViewSet):
         )
 
         serializer = self.get_serializer(queryset, many=True)
+
         return Response(serializer.data)
 
     @action(
@@ -121,9 +167,14 @@ class EventViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={"request": request},
         )
+
         serializer.is_valid(raise_exception=True)
         serializer.save(event=event)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(
         detail=False,
@@ -132,18 +183,16 @@ class EventViewSet(viewsets.ModelViewSet):
         url_path=r"mosquee/(?P<mosque_slug>[-\w]+)",
     )
     def by_mosque(self, request, mosque_slug=None):
-        now = timezone.now()
-
         mosque = get_object_or_404(
             MosqueProfile,
             slug=mosque_slug,
         )
 
         queryset = (
-            self.get_queryset()
+            Event.objects
             .filter(
                 mosque=mosque,
-                starts_at__gte=now,
+                starts_at__gte=timezone.now(),
                 status=Event.Status.PUBLISHED,
             )
             .order_by("starts_at")
@@ -154,9 +203,38 @@ class EventViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class EventRegistrationViewSet(viewsets.ModelViewSet):
+class EventRegistrationViewSet(
+    MosqueScopedViewSetMixin,
+    viewsets.ModelViewSet,
+):
     queryset = EventRegistration.objects.select_related("event")
     serializer_class = EventRegistrationSerializer
     permission_classes = [IsMosqueStaff]
+
     filterset_fields = ["event"]
     search_fields = ["full_name", "phone", "email"]
+
+    def get_queryset(self):
+        return self.get_scoped_queryset(
+            EventRegistration.objects.select_related(
+                "event",
+                "event__mosque",
+            )
+        )
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        self.validate_mosque_access(
+            instance,
+            mosque_field="event__mosque",
+        )
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self.validate_mosque_access(
+            instance,
+            mosque_field="event__mosque",
+        )
+
+        instance.delete()
