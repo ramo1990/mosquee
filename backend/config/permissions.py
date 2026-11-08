@@ -1,4 +1,6 @@
 # config/permissions.py
+# pour les permissions par rôle.
+
 from rest_framework.permissions import BasePermission
 
 

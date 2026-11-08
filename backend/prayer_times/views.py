@@ -2,10 +2,13 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from rest_framework import generics, permissions, viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from config.permissions import IsMosqueStaff
+from core.permissions import MosqueScopedViewSetMixin
 from content.models import MosqueProfile
 
 from .models import DailyPrayerTime, RamadanSchedule
@@ -54,12 +57,54 @@ def get_fallback_prayer_time(mosque=None):
     return prayer_time
 
 
-class DailyPrayerTimeViewSet(viewsets.ModelViewSet):
+class DailyPrayerTimeViewSet(
+    MosqueScopedViewSetMixin,
+    viewsets.ModelViewSet,
+):
     queryset = DailyPrayerTime.objects.select_related("mosque")
     serializer_class = DailyPrayerTimeSerializer
-    permission_classes = [permissions.AllowAny]
+
     filterset_fields = ["mosque", "date"]
     ordering_fields = ["date"]
+
+    def get_permissions(self):
+        if self.action in [
+            "list",
+            "retrieve",
+            "today",
+            "mosque_today",
+        ]:
+            return [permissions.AllowAny()]
+
+        return [IsMosqueStaff()]
+
+    def get_queryset(self):
+        return self.get_scoped_queryset(
+            DailyPrayerTime.objects.select_related("mosque")
+        )
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if not user.is_super_admin:
+            if not user.mosque:
+                raise PermissionDenied(
+                    "Vous n'êtes associé à aucune mosquée."
+                )
+
+            serializer.save(mosque=user.mosque)
+        else:
+            serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        self.validate_mosque_access(instance)
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self.validate_mosque_access(instance)
+        instance.delete()
 
     @action(
         detail=False,
@@ -93,12 +138,54 @@ class DailyPrayerTimeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class RamadanScheduleViewSet(viewsets.ModelViewSet):
+class RamadanScheduleViewSet(
+    MosqueScopedViewSetMixin,
+    viewsets.ModelViewSet,
+):
     queryset = RamadanSchedule.objects.select_related("mosque")
     serializer_class = RamadanScheduleSerializer
-    permission_classes = [permissions.AllowAny]
+
     filterset_fields = ["mosque", "date"]
     ordering_fields = ["date"]
+
+    def get_permissions(self):
+        if self.action in [
+            "list",
+            "retrieve",
+            "by_mosque",
+            "today_for_mosque",
+        ]:
+            return [permissions.AllowAny()]
+
+        return [IsMosqueStaff()]
+
+    def get_queryset(self):
+        return self.get_scoped_queryset(
+            RamadanSchedule.objects.select_related("mosque")
+        )
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if not user.is_super_admin:
+            if not user.mosque:
+                raise PermissionDenied(
+                    "Vous n'êtes associé à aucune mosquée."
+                )
+
+            serializer.save(mosque=user.mosque)
+        else:
+            serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        self.validate_mosque_access(instance)
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self.validate_mosque_access(instance)
+        instance.delete()
 
     @action(
         detail=False,
@@ -112,7 +199,9 @@ class RamadanScheduleViewSet(viewsets.ModelViewSet):
             slug=mosque_slug,
         )
 
-        queryset = self.get_queryset().filter(mosque=mosque)
+        queryset = RamadanSchedule.objects.filter(
+            mosque=mosque,
+        ).order_by("date")
 
         serializer = self.get_serializer(queryset, many=True)
 

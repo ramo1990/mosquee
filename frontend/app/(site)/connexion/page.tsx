@@ -26,7 +26,7 @@ export default function LoginPage() {
             password,
         });
 
-        router.push("/compte");
+        router.push("/dashboard");
 
     } catch {
       setError("Identifiants incorrects.");

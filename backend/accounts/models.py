@@ -72,3 +72,11 @@ class User(AbstractUser):
             self.Role.MOSQUE_ADMIN,
             self.Role.SCREEN_MANAGER,
         }
+
+    @property
+    def is_super_admin(self):
+        return self.role == self.Role.SUPER_ADMIN
+
+    @property
+    def mosque_id(self):
+        return self.mosque_id if self.mosque else None
