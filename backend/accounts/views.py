@@ -105,12 +105,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = User.objects.all()
+        role = self.request.query_params.get("role")
+
+        if role:
+            queryset = queryset.filter(role=role)
 
         if user.is_super_admin:
-            return User.objects.all()
+            return queryset
 
         if user.mosque:
-            return User.objects.filter(mosque=user.mosque)
+            return queryset.filter(mosque=user.mosque)
 
         return User.objects.none()
 
@@ -137,7 +142,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         serializer.save(
             mosque=user.mosque,
-            role=User.Role.MEMBER,
+            role=User.Role.COMMITTEE,
         )
 
     def perform_update(self, serializer):
@@ -163,10 +168,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 "Vous ne pouvez pas modifier cet utilisateur."
             )
 
-        serializer.save(
-            mosque=user.mosque,
-            role=User.Role.MEMBER,
-        )
+        serializer.save()
 
     def perform_destroy(self, instance):
         user = self.request.user
