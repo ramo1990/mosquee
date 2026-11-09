@@ -77,6 +77,6 @@ class User(AbstractUser):
     def is_super_admin(self):
         return self.role == self.Role.SUPER_ADMIN
 
-    @property
-    def mosque_id(self):
-        return self.mosque_id if self.mosque else None
+    # @property
+    # def mosque_id(self):
+    #     return self.mosque_id if self.mosque else None

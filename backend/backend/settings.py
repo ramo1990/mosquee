@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "screens",
     "donations",
     "content",
+    "members"
 ]
 
 CORS_ALLOWED_ORIGINS = [
