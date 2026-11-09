@@ -1,5 +1,6 @@
 import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
 import ModuleGuard from "@/components/ModuleGuard";
+import ClassesManagement from "@/components/classes/ClassesManagement";
 
 export default function ClassesPage() {
   return (
@@ -7,7 +8,23 @@ export default function ClassesPage() {
       <DashboardPagePlaceholder
         title="Gestion des classes"
         description="Créez et gérez les classes, niveaux et groupes d’élèves."
-      />
+      >
+        <ClassesManagement />
+      </DashboardPagePlaceholder>
     </ModuleGuard>
   );
 }
+
+// import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
+// import ModuleGuard from "@/components/ModuleGuard";
+
+// export default function ClassesPage() {
+//   return (
+//     <ModuleGuard module="classes">
+//       <DashboardPagePlaceholder
+//         title="Gestion des classes"
+//         description="Créez et gérez les classes, niveaux et groupes d’élèves."
+//       />
+//     </ModuleGuard>
+//   );
+// }

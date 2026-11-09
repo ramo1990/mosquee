@@ -15,6 +15,7 @@ router.register("users", UserViewSet, basename="users")
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("", include("members.urls")),
 
     path("auth/register/", register, name="register"),
     path("auth/login/", login_view, name="login"),

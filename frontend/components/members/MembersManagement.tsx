@@ -9,6 +9,9 @@ import {
   apiDelete,
 } from "@/lib/api";
 
+import type { User } from "@/lib/types";
+import { apiGetCurrentUser } from "@/lib/api";
+
 type MemberStatus = "active" | "inactive" | "pending";
 
 type Member = {
@@ -20,6 +23,7 @@ type Member = {
   member_number?: string;
   address?: string;
   status?: MemberStatus;
+  mosque?: number;
 };
 
 type MemberForm = {
@@ -27,9 +31,15 @@ type MemberForm = {
   last_name: string;
   email: string;
   phone: string;
-  member_number: string;
+  // member_number: string;
   address: string;
   status: MemberStatus;
+  mosque: string;
+};
+
+type Mosque = {
+  id: number;
+  name: string;
 };
 
 const EMPTY_FORM: MemberForm = {
@@ -37,9 +47,10 @@ const EMPTY_FORM: MemberForm = {
   last_name: "",
   email: "",
   phone: "",
-  member_number: "",
+  // member_number: "",
   address: "",
   status: "active",
+  mosque: "",
 };
 
 const STATUS_LABELS: Record<MemberStatus, string> = {
@@ -49,6 +60,9 @@ const STATUS_LABELS: Record<MemberStatus, string> = {
 };
 
 export default function MembersManagement() {
+  const [user, setUser] = useState<User | null>(null);
+  const [mosques, setMosques] = useState<Mosque[]>([]);
+
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,6 +91,24 @@ export default function MembersManagement() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    async function loadUserAndMosques() {
+      try {
+        const currentUser = await apiGetCurrentUser();
+        setUser(currentUser);
+
+        if (currentUser.role === "super_admin") {
+          const data = await apiGetList<Mosque>("/mosquees/");
+          setMosques(data);
+        }
+      } catch (err) {
+        console.error("Erreur utilisateur ou mosquées :", err);
+      }
+    }
+
+    loadUserAndMosques();
   }, []);
 
   useEffect(() => {
@@ -128,11 +160,12 @@ export default function MembersManagement() {
     setSelectedMember(member);
 
     setForm({
+      mosque: member.mosque?.toString() || "",
       first_name: member.first_name || "",
       last_name: member.last_name || "",
       email: member.email || "",
       phone: member.phone || "",
-      member_number: member.member_number || "",
+      // member_number: member.member_number || "",
       address: member.address || "",
       status: member.status || "active",
     });
@@ -158,12 +191,19 @@ export default function MembersManagement() {
     setError("");
     setSuccess("");
 
+    const payload = {
+      ...form,
+      ...(user?.role !== "super_admin" && {
+        mosque: undefined,
+      }),
+    };
+
     try {
         if (selectedMember) {
-        await apiPatch(`/members/${selectedMember.id}/`, form);
+        await apiPatch(`/members/${selectedMember.id}/`, payload);
         setSuccess("Fidèle modifié avec succès.");
         } else {
-        await apiPost("/members/", form);
+        await apiPost("/members/", payload);
         setSuccess("Fidèle ajouté avec succès.");
         }
 
@@ -173,8 +213,13 @@ export default function MembersManagement() {
 
         await loadMembers();
     } catch (err) {
-        console.error("Erreur enregistrement fidèle :", err);
-        setError("Une erreur est survenue lors de l'enregistrement.");
+        console.error("Erreur complète lors de l'ajout du fidèle :", err);
+
+        if (err instanceof Error) {
+          console.error("Message :", err.message);
+        }
+
+        setError("Impossible d'enregistrer le fidèle. Vérifiez les informations saisies.");
     } finally {
         setSaving(false);
     }
@@ -389,6 +434,35 @@ export default function MembersManagement() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 p-6">
+              {/* Sélection de la mosquée pour le super administrateur */}
+              {user?.role === "super_admin" && (
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Mosquée
+                  </label>
+
+                  <select
+                    value={form.mosque}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        mosque: e.target.value,
+                      })
+                    }
+                    required
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3"
+                  >
+                    <option value="">Sélectionner une mosquée</option>
+
+                    {mosques.map((mosque) => (
+                      <option key={mosque.id} value={mosque.id}>
+                        {mosque.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   label="Prénom"
@@ -417,11 +491,11 @@ export default function MembersManagement() {
                   onChange={(v) => updateField("email", v)}
                 />
 
-                <FormField
+                {/* <FormField
                   label="Numéro de membre"
                   value={form.member_number}
                   onChange={(v) => updateField("member_number", v)}
-                />
+                /> */}
 
                 <FormField
                   label="Adresse"

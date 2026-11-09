@@ -1,5 +1,6 @@
 import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
 import ModuleGuard from "@/components/ModuleGuard";
+import RamadanManagement from "@/components/ramadan/RamadanManagement";
 
 export default function RamadanPage() {
   return (
@@ -7,7 +8,24 @@ export default function RamadanPage() {
       <DashboardPagePlaceholder
         title="Programme Ramadan"
         description="Gérez les horaires du Suhoor, de l’Iftar, des Tarawih et des activités du mois de Ramadan."
-      />
+      >
+        <RamadanManagement />
+      </DashboardPagePlaceholder>
     </ModuleGuard>
   );
 }
+
+
+// import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
+// import ModuleGuard from "@/components/ModuleGuard";
+
+// export default function RamadanPage() {
+//   return (
+//     <ModuleGuard module="ramadan">
+//       <DashboardPagePlaceholder
+//         title="Programme Ramadan"
+//         description="Gérez les horaires du Suhoor, de l’Iftar, des Tarawih et des activités du mois de Ramadan."
+//       />
+//     </ModuleGuard>
+//   );
+// }

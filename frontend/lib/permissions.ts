@@ -34,7 +34,9 @@ export type DashboardModule =
   | "display-schedule"
   | "display-prayer-times"
   | "media"
-  | "screen-preview";
+  | "screen-preview"
+  | "notifications"
+  | "settings";
 
 const ADMIN_MODULES: DashboardModule[] = [
   "dashboard",
@@ -72,6 +74,8 @@ const ADMIN_MODULES: DashboardModule[] = [
   "display-prayer-times",
   "media",
   "screen-preview",
+  "notifications",
+  "settings"
 ];
 
 const COMMITTEE_MODULES: DashboardModule[] = [
@@ -93,6 +97,8 @@ const IMAM_MODULES: DashboardModule[] = [
   "religious-courses",
   "ramadan",
   "religious-events",
+  "notifications",
+  "settings"
 ];
 
 const TEACHER_MODULES: DashboardModule[] = [
@@ -105,6 +111,8 @@ const TEACHER_MODULES: DashboardModule[] = [
   "student-progress",
   "assignments",
   "course-calendar",
+  "notifications",
+  "settings"
 ];
 
 const SCREEN_MANAGER_MODULES: DashboardModule[] = [
@@ -116,6 +124,8 @@ const SCREEN_MANAGER_MODULES: DashboardModule[] = [
   "display-prayer-times",
   "media",
   "screen-preview",
+  "notifications",
+  "settings"
 ];
 
 export function canAccessModule(

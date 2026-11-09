@@ -1,5 +1,6 @@
 import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
 import ModuleGuard from "@/components/ModuleGuard";
+import AssignmentsManagement from "@/components/assignments/AssignmentsManagement";
 
 export default function AssignmentsPage() {
   return (
@@ -7,7 +8,24 @@ export default function AssignmentsPage() {
       <DashboardPagePlaceholder
         title="Devoirs et évaluations"
         description="Publiez les devoirs, contrôles et évaluations destinés aux élèves."
-      />
+      >
+        <AssignmentsManagement />
+      </DashboardPagePlaceholder>
     </ModuleGuard>
   );
 }
+
+
+// import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
+// import ModuleGuard from "@/components/ModuleGuard";
+
+// export default function AssignmentsPage() {
+//   return (
+//     <ModuleGuard module="assignments">
+//       <DashboardPagePlaceholder
+//         title="Devoirs et évaluations"
+//         description="Publiez les devoirs, contrôles et évaluations destinés aux élèves."
+//       />
+//     </ModuleGuard>
+//   );
+// }
