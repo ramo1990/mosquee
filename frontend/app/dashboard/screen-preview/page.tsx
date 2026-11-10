@@ -1,6 +1,6 @@
 import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
 import ModuleGuard from "@/components/ModuleGuard";
-import ScreenPreviewManagement from "@/components/screen-preview/ScreenPreviewManagement";
+import ScreenPreviewView from "@/components/screen-preview/ScreenPreviewView";
 
 export default function ScreenPreviewPage() {
   return (
@@ -9,24 +9,8 @@ export default function ScreenPreviewPage() {
         title="Prévisualisation des écrans"
         description="Visualisez l’affichage en temps réel de chaque écran avant diffusion."
       >
-        <ScreenPreviewManagement />
+        <ScreenPreviewView />
       </DashboardPagePlaceholder>
     </ModuleGuard>
   );
 }
-
-
-
-// import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
-// import ModuleGuard from "@/components/ModuleGuard";
-
-// export default function ScreenPreviewPage() {
-//   return (
-//     <ModuleGuard module="screen-preview">
-//       <DashboardPagePlaceholder
-//         title="Prévisualisation des écrans"
-//         description="Visualisez l’affichage en temps réel de chaque écran avant diffusion."
-//       />
-//     </ModuleGuard>
-//   );
-// }

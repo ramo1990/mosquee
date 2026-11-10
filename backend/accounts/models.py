@@ -14,6 +14,21 @@ class User(AbstractUser):
         SCREEN_MANAGER = "screen_manager", "Responsable écran"
         MEMBER = "member", "Fidèle"
 
+    class CommitteeRole(models.TextChoices):
+        PRESIDENT = "president", "Président"
+        VICE_PRESIDENT = "vice_president", "Vice-président"
+        SECRETARY = "secretary", "Secrétaire"
+        TREASURER = "treasurer", "Trésorier"
+        MEMBER = "member", "Membre du comité"
+
+    committee_role = models.CharField(
+        _("fonction au comité"),
+        max_length=20,
+        choices=CommitteeRole.choices,
+        default=CommitteeRole.MEMBER,
+        blank=True,
+    )
+
     phone = models.CharField(
         _("téléphone"),
         max_length=30,
