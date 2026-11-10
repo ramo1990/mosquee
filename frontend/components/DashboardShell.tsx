@@ -46,6 +46,9 @@ const MODULE_LABELS: Record<DashboardModule, string> = {
   "display-prayer-times": "Horaires de prière affichés",
   media: "Images et vidéos",
   "screen-preview": "Prévisualisation des écrans",
+
+  notifications: "Notifications",
+  settings: "Paramètres",
 };
 
 export default function DashboardShell({
