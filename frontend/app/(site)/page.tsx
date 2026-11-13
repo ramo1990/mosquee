@@ -5,7 +5,6 @@ import Image from "next/image";
 import {
   ArrowRight,
   BookOpen,
-  CalendarDays,
   Clock,
   Heart,
   HandHeart,
@@ -86,9 +85,9 @@ function LoadingCard() {
 
 function HomeHero() {
   return (
-    <section className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-700 px-6 py-14 text-white shadow-xl sm:px-10 sm:py-20 lg:px-16">
+    <section className="relative isolate overflow-hidden rounded-[2rem] bg-linear-to-br from-emerald-950 via-emerald-900 to-emerald-700 px-6 py-14 text-white shadow-xl sm:px-10 sm:py-20 lg:px-16">
 
-      <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full border-[35px] border-white/5" />
+      <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full border-35 border-white/5" />
       <div className="pointer-events-none absolute -right-5 -top-5 h-64 w-64 rounded-full border border-white/10" />
       <div className="pointer-events-none absolute -bottom-40 left-1/3 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />
 
@@ -258,7 +257,7 @@ async function LatestNews() {
             </p>
 
             <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-800">
-              Lire l'article
+              Lire l&apos;article
               <ArrowRight size={16} />
             </span>
           </div>
@@ -324,8 +323,8 @@ async function LatestGallery() {
 
 function DonationsBanner() {
   return (
-    <section className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-rose-950 via-rose-800 to-rose-700 p-7 text-white sm:p-10">
-      <div className="pointer-events-none absolute -right-16 -top-20 -z-10 h-64 w-64 rounded-full border-[30px] border-white/5" />
+    <section className="relative isolate overflow-hidden rounded-3xl bg-linear-to-br from-rose-950 via-rose-800 to-rose-700 p-7 text-white sm:p-10">
+      <div className="pointer-events-none absolute -right-16 -top-20 -z-10 h-64 w-64 rounded-full border-30 border-white/5" />
 
       <div className="relative flex flex-col justify-between gap-7 sm:flex-row sm:items-center">
         <div className="max-w-2xl">
@@ -341,7 +340,7 @@ function DonationsBanner() {
           </h2>
 
           <p className="mt-3 text-sm leading-7 text-rose-100">
-            Chaque contribution aide à financer l'entretien,
+            Chaque contribution aide à financer l&apos;entretien,
             les activités et les projets de notre communauté.
             Votre générosité fait la différence.
           </p>
@@ -480,7 +479,7 @@ export default function HomePage() {
         </div>
 
         <Link
-          href="/mosquees"
+          href="/contact"
           className="mt-6 inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-6 py-3 font-bold text-white transition hover:bg-emerald-900 sm:mt-0"
         >
           Nous contacter

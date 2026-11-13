@@ -16,26 +16,55 @@ import {
   Loader2,
 } from "lucide-react";
 
+type ApiPrayerTime = {
+  id: number;
+  mosque: string | null;
+  date: string;
+  fajr: string;
+  sunrise: string | null;
+  dhuhr: string;
+  asr: string;
+  maghrib: string;
+  isha: string;
+  fajr_iqama: string | null;
+  dhuhr_iqama: string | null;
+  asr_iqama: string | null;
+  maghrib_iqama: string | null;
+  isha_iqama: string | null;
+  jumuah_time: string | null;
+  jumuah_khateeb: string | null;
+};
+
 type Prayer = {
   name: string;
   time: string;
+  iqama?: string | null;
   icon: React.ElementType;
 };
 
-const PRAYERS: Prayer[] = [
-  { name: "Fajr", time: "05:45", icon: Moon },
-  { name: "Dhuhr", time: "13:15", icon: Sun },
-  { name: "Asr", time: "16:30", icon: Sunrise },
-  { name: "Maghrib", time: "18:05", icon: Sunset },
-  { name: "Isha", time: "19:30", icon: Moon },
-];
+const MOSQUE_SLUG: string | null = null;
 
-function getNextPrayer() {
-  const now = new Date();
+// null = horaires généraux
+// Exemple : "mosquee-abidjan" = horaires de cette mosquée
 
-  for (const prayer of PRAYERS) {
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+function mapPrayerTimes(data: ApiPrayerTime): Prayer[] {
+  return [
+    { name: "Fajr", time: data.fajr, iqama: data.fajr_iqama, icon: Moon },
+    { name: "Dhuhr", time: data.dhuhr, iqama: data.dhuhr_iqama, icon: Sun },
+    { name: "Asr", time: data.asr, iqama: data.asr_iqama, icon: Sunrise },
+    { name: "Maghrib", time: data.maghrib, iqama: data.maghrib_iqama, icon: Sunset },
+    { name: "Isha", time: data.isha, iqama: data.isha_iqama, icon: Moon },
+  ];
+}
+
+
+function getNextPrayer(prayers: Prayer[], now: Date) {
+  for (const prayer of prayers) {
     const [hours, minutes] = prayer.time.split(":").map(Number);
-    const date = new Date();
+
+    const date = new Date(now);
     date.setHours(hours, minutes, 0, 0);
 
     if (date > now) {
@@ -43,12 +72,20 @@ function getNextPrayer() {
     }
   }
 
-  const [hours, minutes] = PRAYERS[0].time.split(":").map(Number);
-  const date = new Date();
+  // Toutes les prières du jour sont passées.
+  // La prochaine sera Fajr demain.
+
+  const firstPrayer = prayers[0];
+
+  if (!firstPrayer) return null;
+
+  const [hours, minutes] = firstPrayer.time.split(":").map(Number);
+
+  const date = new Date(now);
   date.setDate(date.getDate() + 1);
   date.setHours(hours, minutes, 0, 0);
 
-  return { ...PRAYERS[0], date };
+  return { ...firstPrayer, date };
 }
 
 function formatCountdown(target: Date, now: Date) {
@@ -64,14 +101,90 @@ function formatCountdown(target: Date, now: Date) {
 export default function PrayerTimesPage() {
   const [now, setNow] = useState<Date | null>(null);
 
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
+  const [jumuahTime, setJumuahTime] = useState<string | null>(null);
+  const [jumuahKhateeb, setJumuahKhateeb] = useState<string | null>(null);
+  const [location, setLocation] = useState("Côte d'Ivoire");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  
   useEffect(() => {
-    setNow(new Date());
+    const controller = new AbortController();
+
+    async function fetchPrayerTimes() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const endpoint = MOSQUE_SLUG
+          ? `${API_URL}/horaires-prieres/mosque/${MOSQUE_SLUG}/today/`
+          : `${API_URL}/horaires-prieres/today/`;
+
+        const response = await fetch(endpoint, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          signal: controller.signal,
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            response.status === 404
+              ? "Aucun horaire de prière disponible."
+              : "Impossible de récupérer les horaires."
+          );
+        }
+
+        const data: ApiPrayerTime = await response.json();
+
+        setPrayers(mapPrayerTimes(data));
+        setJumuahTime(data.jumuah_time);
+        setJumuahKhateeb(data.jumuah_khateeb);
+
+        setLocation(
+          data.mosque
+            ? `Mosquée : ${data.mosque}`
+            : "Horaires généraux — Côte d'Ivoire"
+        );
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Une erreur est survenue."
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchPrayerTimes();
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setNow(new Date());
+    }, 0);
 
     const interval = setInterval(() => {
       setNow(new Date());
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
   }, []);
 
   if (!now) {
@@ -82,13 +195,60 @@ export default function PrayerTimesPage() {
     );
   }
 
-  const nextPrayer = getNextPrayer();
+  const nextPrayer = getNextPrayer(prayers, now);
   const today = now.toLocaleDateString("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
+
+  if (loading) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-700" />
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4">
+        <Info className="h-10 w-10 text-red-500" />
+
+        <h2 className="text-xl font-bold text-gray-900">
+          Impossible de charger les horaires
+        </h2>
+
+        <p className="text-center text-sm text-gray-500">
+          {error}
+        </p>
+
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-xl bg-emerald-800 px-5 py-3 font-bold text-white"
+        >
+          Réessayer
+        </button>
+      </main>
+    );
+  }
+
+  if (!now) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-700" />
+      </main>
+    );
+  }
+
+  if (prayers.length === 0 || !nextPrayer) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center">
+        Aucun horaire disponible.
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -111,7 +271,7 @@ export default function PrayerTimesPage() {
         </section>
 
         {/* PROCHAINE PRIÈRE */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-7 text-white shadow-lg sm:p-10">
+        <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-emerald-800 to-emerald-950 p-7 text-white shadow-lg sm:p-10">
           <div className="relative z-10">
             <p className="text-sm font-semibold text-emerald-200">
               Prochaine prière
@@ -140,8 +300,8 @@ export default function PrayerTimesPage() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border-[35px] border-white/5" />
-          <div className="pointer-events-none absolute -bottom-36 right-28 h-72 w-72 rounded-full border-[30px] border-white/5" />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full border-35 border-white/5" />
+          <div className="pointer-events-none absolute -bottom-36 right-28 h-72 w-72 rounded-full border-30 border-white/5" />
         </section>
 
         {/* DATE ET LOCALISATION */}
@@ -153,7 +313,7 @@ export default function PrayerTimesPage() {
 
             <div>
               <p className="text-xs font-semibold text-gray-500">
-                Aujourd'hui
+                Aujourd&apos;hui
               </p>
 
               <p className="mt-1 font-bold capitalize text-gray-900">
@@ -173,7 +333,7 @@ export default function PrayerTimesPage() {
               </p>
 
               <p className="mt-1 font-bold text-gray-900">
-                Côte d&apos;Ivoire
+                {location}
               </p>
             </div>
           </div>
@@ -192,49 +352,91 @@ export default function PrayerTimesPage() {
           </div>
 
           <div className="space-y-3">
-            {PRAYERS.map((prayer) => {
-              const Icon = prayer.icon;
-              const isNext = prayer.name === nextPrayer.name;
+            
+                  {/* HORAIRES */}
+                  <section className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:p-8">
+                    <div className="mb-7">
+                      <h2 className="text-xl font-extrabold text-gray-900">
+                        Les cinq prières
+                      </h2>
 
-              return (
-                <div
-                  key={prayer.name}
-                  className={`flex items-center justify-between rounded-2xl border p-4 transition ${
-                    isNext
-                      ? "border-emerald-300 bg-emerald-50"
-                      : "border-gray-100 bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-                      isNext
-                        ? "bg-emerald-800 text-white"
-                        : "bg-white text-emerald-700"
-                    }`}>
-                      <Icon size={23} />
-                    </div>
-
-                    <div>
-                      <p className="font-bold text-gray-900">
-                        {prayer.name}
+                      <p className="mt-1 text-sm text-gray-500">
+                        Horaires de l&apos;Adhan et de l&apos;Iqama
                       </p>
-
-                      {isNext && (
-                        <p className="mt-1 text-xs font-bold text-emerald-700">
-                          Prochaine prière
-                        </p>
-                      )}
                     </div>
-                  </div>
 
-                  <p className={`text-xl font-extrabold tabular-nums ${
-                    isNext ? "text-emerald-800" : "text-gray-800"
-                  }`}>
-                    {prayer.time}
-                  </p>
-                </div>
-              );
-            })}
+                    <div className="space-y-3">
+                      {prayers.map((prayer) => {
+                        const Icon = prayer.icon;
+                        const isNext = prayer.name === nextPrayer.name;
+
+                        return (
+                          <div
+                            key={prayer.name}
+                            className={`flex items-center justify-between rounded-2xl border p-4 transition ${
+                              isNext
+                                ? "border-emerald-300 bg-emerald-50"
+                                : "border-gray-100 bg-gray-50"
+                            }`}
+                          >
+                      {/* NOM ET ICÔNE */}
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                            isNext
+                              ? "bg-emerald-800 text-white"
+                              : "bg-white text-emerald-700"
+                          }`}
+                        >
+                          <Icon size={23} />
+                        </div>
+
+                        <div>
+                          <p className="font-bold text-gray-900">
+                            {prayer.name}
+                          </p>
+
+                          {isNext && (
+                            <p className="mt-1 text-xs font-bold text-emerald-700">
+                              Prochaine prière
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* ADHAN ET IQAMA */}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                            Adhan
+                          </p>
+
+                          <p
+                            className={`text-xl font-extrabold tabular-nums ${
+                              isNext ? "text-emerald-800" : "text-gray-800"
+                            }`}
+                          >
+                            {prayer.time.slice(0, 5)}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+                            Iqama
+                          </p>
+
+                          <p className="text-sm font-bold tabular-nums text-emerald-800">
+                            {prayer.iqama
+                              ? prayer.iqama.slice(0, 5)
+                              : "Non renseignée"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           </div>
         </section>
 
@@ -247,7 +449,7 @@ export default function PrayerTimesPage() {
 
             <div>
               <h2 className="text-lg font-extrabold text-gray-900">
-                Prière du vendredi (Joumou'a)
+                Prière du vendredi (Joumou&apos;a)
               </h2>
 
               <p className="mt-2 text-sm leading-relaxed text-gray-600">
@@ -256,21 +458,18 @@ export default function PrayerTimesPage() {
               </p>
 
               <p className="mt-3 text-sm font-bold text-amber-800">
-                Horaire à confirmer auprès de votre mosquée.
+                {jumuahTime
+                  ? `Horaire : ${jumuahTime.slice(0, 5)}`
+                  : "Horaire à confirmer auprès de votre mosquée."}
               </p>
+
+              {jumuahKhateeb && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Prédicateur : {jumuahKhateeb}
+                </p>
+              )}
             </div>
           </div>
-        </section>
-
-        {/* INFORMATION */}
-        <section className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-5">
-          <Info className="mt-0.5 shrink-0 text-blue-700" size={20} />
-
-          <p className="text-sm leading-relaxed text-blue-900">
-            Les horaires présentés sont des exemples de démonstration.
-            Ils doivent être remplacés par les horaires officiels
-            calculés ou configurés pour votre mosquée.
-          </p>
         </section>
 
         {/* LIENS */}
