@@ -9,13 +9,10 @@ import type {
   MosqueProfile,
   NewsArticle,
   Event,
-  DonationCampaign,
 } from "@/lib/types";
 
-import MosqueContactForm from "@/components/MosqueContactForm";
 import MosquePrayerTimesToday from "@/components/MosquePrayerTimesToday";
 import MosqueAnnouncements from "@/components/MosqueAnnouncements";
-import MosqueDonationForm from "@/components/MosqueDonationForm";
 import MosqueRamadanSchedule from "@/components/MosqueRamadanSchedule";
 
 function SectionHeading({
@@ -196,6 +193,14 @@ async function MosqueHero({ slug }: { slug: string }) {
                 Contacter sur WhatsApp
               </a>
             )}
+
+            <Link
+              href={`/mosquees/${slug}/contact`}
+              className="flex items-center gap-3 rounded-xl border border-emerald-300/30 bg-emerald-400 px-4 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+            >
+              <span aria-hidden="true">✉️</span>
+              Envoyer un message
+            </Link>
           </div>
         </div>
       </div>
@@ -396,31 +401,6 @@ async function MosqueGallery({ slug }: { slug: string }) {
   );
 }
 
-async function MosqueDonations({ slug }: { slug: string }) {
-  let campaigns: DonationCampaign[] = [];
-
-  try {
-    campaigns = await apiGetList<DonationCampaign>(
-      `/campagnes-dons/mosquee/${slug}/`
-    );
-  } catch (error) {
-    console.error(
-      "Erreur lors du chargement des campagnes :",
-      error
-    );
-  }
-
-  return (
-    <MosqueDonationForm
-      mosqueSlug={slug}
-      campaigns={campaigns.map(({ slug, title }) => ({
-        slug,
-        title,
-      }))}
-    />
-  );
-}
-
 export default function MosquePage({
   params,
 }: {
@@ -538,20 +518,67 @@ async function MosquePageContent({
 
       <section>
         <SectionHeading
-          title="Soutenir la mosquée"
-          description="Contribuez aux projets et aux activités de votre communauté."
+          title="Faire un don"
+          description="Soutenez les projets et les activités de notre communauté grâce à votre générosité."
         />
-        <Suspense fallback={<LoadingCard lines={5} />}>
-          <MosqueDonations slug={slug} />
-        </Suspense>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8">
+          <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+            <div>
+              <h3 className="text-lg font-bold text-emerald-950">
+                Soutenir notre mosquée
+              </h3>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-800">
+                Chaque contribution compte. Participez au financement
+                des projets et au développement de notre communauté.
+              </p>
+            </div>
+
+            <Link
+              href="/dons"
+              className="inline-flex min-h-12 shrink-0 items-center justify-center gap-3 rounded-xl bg-emerald-800 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+            >
+              Faire un don
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
       </section>
 
       <section>
         <SectionHeading
           title="Contacter la mosquée"
-          description="Envoyez directement un message à l’équipe de la mosquée."
+          description="Une question ? Besoin d'informations ? Contactez directement l'équipe de votre mosquée."
         />
-        <MosqueContactForm mosqueSlug={slug} />
+
+        <div className="rounded-3xl border border-emerald-200 bg-linear-to-br from-emerald-50 via-white to-amber-50 p-6 sm:p-8">
+          <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+            <div>
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-2xl">
+                ✉️
+              </div>
+
+              <h3 className="text-xl font-extrabold text-gray-950">
+                Nous sommes à votre écoute
+              </h3>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-gray-600">
+                Envoyez votre message à l&apos;administration de cette mosquée.
+                Notre équipe pourra vous répondre dans les meilleurs délais.
+              </p>
+            </div>
+
+            <Link
+              href={`/mosquees/${slug}/contact`}
+              className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-emerald-800 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-900"
+            >
+              <span>✉️</span>
+              Contacter cette mosquée
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
       </section>
     </div>
   );

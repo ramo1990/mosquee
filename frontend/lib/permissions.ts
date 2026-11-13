@@ -35,47 +35,24 @@ export type DashboardModule =
   | "display-prayer-times"
   | "media"
   | "screen-preview"
+  | "my-donations"
+  | "my-contributions"
+  | "my-activities"
+  | "my-profile"
   | "notifications"
   | "settings";
 
 const ADMIN_MODULES: DashboardModule[] = [
-  "dashboard",
-  "members",
-  "committee",
-  "imams-teachers",
-  "contributions",
-  "donations",
-  "expenses",
-  "finance",
-  "activities",
-  "announcements",
-  "screens",
-  "mosque-settings",
-  "tasks",
-  "prayer-times",
-  "sermons",
-  "religious-announcements",
-  "islamic-calendar",
-  "religious-courses",
-  "ramadan",
-  "religious-events",
-  
-  "classes",
-  "students",
-  "courses",
-  "learning-programs",
-  "attendance",
-  "student-progress",
-  "assignments",
-  "course-calendar",
-  "connected-screens",
-  "slides",
-  "display-schedule",
-  "display-prayer-times",
-  "media",
-  "screen-preview",
-  "notifications",
-  "settings"
+  "dashboard", "members", "committee", "imams-teachers",
+  "contributions", "donations", "expenses", "finance",
+  "activities", "announcements", "screens", "mosque-settings",
+  "tasks", "prayer-times", "sermons", "religious-announcements",
+  "islamic-calendar", "religious-courses", "ramadan",
+  "religious-events", "classes", "students", "courses",
+  "learning-programs", "attendance", "student-progress",
+  "assignments", "course-calendar", "connected-screens",
+  "slides", "display-schedule", "display-prayer-times",
+  "media", "screen-preview", "notifications", "settings"
 ];
 
 const COMMITTEE_MODULES: DashboardModule[] = [
@@ -86,6 +63,10 @@ const COMMITTEE_MODULES: DashboardModule[] = [
   "expenses",
   "activities",
   "tasks",
+  "members",
+  "announcements",
+  "notifications",
+  "settings"
 ];
 
 const IMAM_MODULES: DashboardModule[] = [
@@ -128,59 +109,38 @@ const SCREEN_MANAGER_MODULES: DashboardModule[] = [
   "settings"
 ];
 
+const MEMBER_MODULES: DashboardModule[] = [
+  "dashboard",
+  "my-donations",
+  "my-contributions",
+  "my-activities",
+  "my-profile",
+  "prayer-times",
+  "islamic-calendar",
+  "religious-events",
+  "announcements",
+  "notifications",
+];
+
+const ROLE_MODULES: Record<UserRole, DashboardModule[]> = {
+  super_admin: ADMIN_MODULES,
+  mosque_admin: ADMIN_MODULES,
+  committee: COMMITTEE_MODULES,
+  imam: IMAM_MODULES,
+  teacher: TEACHER_MODULES,
+  screen_manager: SCREEN_MANAGER_MODULES,
+  member: MEMBER_MODULES
+};
+
 export function canAccessModule(
   role: UserRole,
   module: DashboardModule
 ): boolean {
-  if (role === "super_admin") return true;
-
-  if (role === "mosque_admin") {
-    return ADMIN_MODULES.includes(module);
-  }
-
-  if (role === "committee") {
-    return COMMITTEE_MODULES.includes(module);
-  }
-
-  if (role === "imam") {
-    return IMAM_MODULES.includes(module);
-  }
-
-  if (role === "teacher") {
-    return TEACHER_MODULES.includes(module);
-  }
-
-  if (role === "screen_manager") {
-    return SCREEN_MANAGER_MODULES.includes(module);
-  }
-
-  return false;
+  return ROLE_MODULES[role]?.includes(module) ?? false;
 }
 
-export function getDashboardModules(role: UserRole): DashboardModule[] {
-  if (role === "super_admin") {
-    return ADMIN_MODULES;
-  }
-
-  if (role === "mosque_admin") {
-    return ADMIN_MODULES;
-  }
-
-  if (role === "committee") {
-    return COMMITTEE_MODULES;
-  }
-
-  if (role === "imam") {
-    return IMAM_MODULES;
-  }
-
-  if (role === "teacher") {
-    return TEACHER_MODULES;
-  }
-
-  if (role === "screen_manager") {
-    return SCREEN_MANAGER_MODULES;
-  }
-
-  return ["dashboard"];
+export function getDashboardModules(
+  role: UserRole
+): DashboardModule[] {
+  return ROLE_MODULES[role] ?? [];
 }

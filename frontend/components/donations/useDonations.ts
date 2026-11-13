@@ -1,54 +1,70 @@
+
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiGetList, apiPatch, apiPost } from "@/lib/api";
 
-import { apiGetList, apiPost, apiPatch } from "@/lib/api";
+export type Donation = {
+  id: number;
+  donor_name: string;
+  amount: number | string;
+  phone: string;
+  project_name: string;
+  donation_date: string;
+  status: "pending" | "received";
+  notes: string;
+};
 
-import {
-  Donation,
-  DonationForm,
-  DonationFormField,
-  DonationStatusFilter,
-  EMPTY_FORM,
-} from "./types";
+export type DonationForm = {
+  donor_name: string;
+  amount: string;
+  phone: string;
+  project_name: string;
+  donation_date: string;
+  status: string;
+  notes: string;
+};
+
+const EMPTY_FORM: DonationForm = {
+  donor_name: "",
+  amount: "",
+  phone: "",
+  project_name: "",
+  donation_date: new Date().toLocaleDateString("en-CA"),
+  status: "received",
+  notes: "",
+};
 
 export function useDonations() {
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [form, setForm] = useState<DonationForm>(EMPTY_FORM);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState<DonationStatusFilter>("all");
-  const [projectFilter, setProjectFilter] = useState("all");
-
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<DonationForm>(EMPTY_FORM);
 
-  // Chargement des dons
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
   const loadDonations = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setError(null);
 
     try {
-      const data = await apiGetList<Donation[]>("/donations/");
+      const data = await apiGetList<Donation>("/donations/");
       setDonations(data);
     } catch (err) {
-      console.error("Erreur chargement des dons :", err);
-
-      setDonations([]);
-      setError("Impossible de charger les dons pour le moment.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger les dons."
+      );
     } finally {
       setLoading(false);
     }
@@ -58,79 +74,55 @@ export function useDonations() {
     void loadDonations();
   }, [loadDonations]);
 
-  // Projets disponibles
   const availableProjects = useMemo(() => {
-    const projects = new Set<string>();
-
-    donations.forEach((donation) => {
-      if (donation.project) {
-        projects.add(donation.project);
-      }
-    });
-
-    return Array.from(projects).sort();
+    return Array.from(
+      new Set(
+        donations
+          .map((donation) => donation.project_name?.trim())
+          .filter((project): project is string => Boolean(project))
+      )
+    ).sort((a, b) => a.localeCompare(b, "fr"));
   }, [donations]);
 
-  // Filtrage
   const filteredDonations = useMemo(() => {
-    const query = search.toLowerCase().trim();
+    return donations.filter((donation) => {
+      const searchText = search.toLowerCase().trim();
 
-    return donations
-      .filter((donation) => {
-        const matchesSearch =
-          !query ||
-          [
-            donation.donor_name,
-            donation.project,
-            donation.payment_method,
-            donation.notes,
-            donation.donation_date,
-          ].some((value) =>
-            value?.toLowerCase().includes(query)
-          );
+      const matchesSearch =
+        !searchText ||
+        donation.donor_name?.toLowerCase().includes(searchText) ||
+        donation.phone?.toLowerCase().includes(searchText) ||
+        donation.project_name?.toLowerCase().includes(searchText);
 
-        const matchesStatus =
-          statusFilter === "all" ||
-          donation.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        donation.status === statusFilter;
 
-        const matchesProject =
-          projectFilter === "all" ||
-          donation.project === projectFilter;
+      const matchesProject =
+        projectFilter === "all" ||
+        donation.project_name === projectFilter;
 
-        return (
-          matchesSearch &&
-          matchesStatus &&
-          matchesProject
-        );
-      })
-      .sort((a, b) =>
-        (b.donation_date ?? "").localeCompare(
-          a.donation_date ?? ""
-        )
-      );
+      return matchesSearch && matchesStatus && matchesProject;
+    });
   }, [donations, search, statusFilter, projectFilter]);
 
-  // Statistiques
-  const totalReceived = donations
-    .filter((donation) => donation.status === "received")
-    .reduce(
-      (total, donation) => total + (donation.amount ?? 0),
-      0
-    );
+  const receivedDonations = useMemo(
+    () => donations.filter((donation) => donation.status === "received"),
+    [donations]
+  );
+
+  const totalReceived = receivedDonations.reduce(
+    (total, donation) => total + Number(donation.amount || 0),
+    0
+  );
+
+  const receivedCount = receivedDonations.length;
 
   const pendingCount = donations.filter(
     (donation) => donation.status === "pending"
   ).length;
 
-  const receivedCount = donations.filter(
-    (donation) => donation.status === "received"
-  ).length;
-
-  // Gestion du formulaire
-  function updateForm(
-    field: DonationFormField,
-    value: string
-  ) {
+  function updateForm(field: keyof DonationForm, value: string) {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -138,139 +130,113 @@ export function useDonations() {
   }
 
   function openCreateForm() {
-    setForm(EMPTY_FORM);
     setEditingId(null);
+    setForm({ ...EMPTY_FORM });
+    setError(null);
+    setSuccess(null);
     setShowForm(true);
-    setError("");
-    setSuccess("");
   }
 
   function openEditForm(donation: Donation) {
+    setEditingId(donation.id);
+
     setForm({
-      donor_name: donation.donor_name,
-      donor: donation.donor
-        ? String(donation.donor)
-        : "",
-      amount: donation.amount
-        ? String(donation.amount)
-        : "",
-      project: donation.project ?? "",
-      payment_method: donation.payment_method ?? "",
+      donor_name: donation.donor_name ?? "",
+      amount: String(donation.amount ?? ""),
+      phone: donation.phone ?? "",
+      project_name: donation.project_name ?? "",
       donation_date: donation.donation_date ?? "",
-      status: donation.status,
+      status: donation.status ?? "pending",
       notes: donation.notes ?? "",
     });
 
-    setEditingId(donation.id);
+    setError(null);
+    setSuccess(null);
     setShowForm(true);
-    setError("");
-    setSuccess("");
   }
 
   function closeForm() {
-    setForm(EMPTY_FORM);
-    setEditingId(null);
+    if (saving) return;
+
     setShowForm(false);
+    setEditingId(null);
   }
 
-  // Création et modification
-  async function submitForm(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
+  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setError("");
-    setSuccess("");
+    setError(null);
+    setSuccess(null);
+
+    if (!form.donor_name.trim()) {
+      setError("Veuillez renseigner le nom du donateur.");
+      return;
+    }
+
+    if (!form.amount || Number(form.amount) <= 0) {
+      setError("Veuillez saisir un montant valide.");
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
       donor_name: form.donor_name.trim(),
-      donor: form.donor
-        ? Number(form.donor)
-        : null,
       amount: Number(form.amount),
-      project: form.project.trim() || undefined,
-      payment_method:
-        form.payment_method.trim() || undefined,
-      donation_date: form.donation_date || undefined,
+      phone: form.phone.trim(),
+      project_name: form.project_name.trim(),
+      donation_date: form.donation_date,
       status: form.status,
-      notes: form.notes.trim() || undefined,
+      notes: form.notes.trim(),
     };
 
     try {
       if (editingId !== null) {
-        const updatedDonation =
-          await apiPatch<Donation>(
-            `/donations/${editingId}/`,
-            payload
-          );
-
-        setDonations((current) =>
-          current.map((donation) =>
-            donation.id === editingId
-              ? { ...donation, ...updatedDonation }
-              : donation
-          )
+        await apiPatch<Donation>(
+          `/donations/${editingId}/`,
+          payload
         );
 
         setSuccess("Don modifié avec succès.");
       } else {
-        const createdDonation =
-          await apiPost<Donation>(
-            "/donations/",
-            payload
-          );
-
-        setDonations((current) => [
-          createdDonation,
-          ...current,
-        ]);
-
+        await apiPost<Donation>("/donations/", payload);
         setSuccess("Don enregistré avec succès.");
       }
 
-      closeForm();
-    } catch (err) {
-      console.error("Erreur enregistrement du don :", err);
+      setShowForm(false);
+      setEditingId(null);
+      setForm({ ...EMPTY_FORM });
 
+      await loadDonations();
+    } catch (err) {
       setError(
-        editingId !== null
-          ? "Impossible de modifier ce don."
-          : "Impossible d'enregistrer ce don."
+        err instanceof Error
+          ? err.message
+          : "Impossible d'enregistrer le don."
       );
     } finally {
       setSaving(false);
     }
   }
 
-  // Marquer un don comme reçu
-  async function markAsReceived(donation: Donation) {
-    setError("");
-    setSuccess("");
-    setUpdatingId(donation.id);
+  async function markAsReceived(id: number) {
+    setError(null);
+    setSuccess(null);
+    setUpdatingId(id);
 
     try {
-      const updatedDonation =
-        await apiPatch<Donation>(
-          `/donations/${donation.id}/`,
-          {
-            status: "received",
-          }
-        );
+      await apiPatch<Donation>(`/donations/${id}/`, {
+        status: "received",
+      });
 
-      setDonations((current) =>
-        current.map((item) =>
-          item.id === donation.id
-            ? { ...item, ...updatedDonation }
-            : item
-        )
-      );
-
-      setSuccess("Don marqué comme reçu.");
+      setSuccess("Le don a été confirmé avec succès.");
+      await loadDonations();
     } catch (err) {
-      console.error("Erreur réception du don :", err);
-
-      setError("Impossible de marquer ce don comme reçu.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de confirmer ce don."
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -281,36 +247,34 @@ export function useDonations() {
     filteredDonations,
     availableProjects,
 
+    form,
+    showForm,
+    editingId,
+
     loading,
     saving,
     updatingId,
 
-    search,
-    setSearch,
-
-    statusFilter,
-    setStatusFilter,
-
-    projectFilter,
-    setProjectFilter,
-
     error,
     success,
 
-    showForm,
-    editingId,
-    form,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    projectFilter,
+    setProjectFilter,
 
     totalReceived,
-    pendingCount,
     receivedCount,
+    pendingCount,
 
-    loadDonations,
     updateForm,
     openCreateForm,
     openEditForm,
     closeForm,
     submitForm,
     markAsReceived,
+    loadDonations,
   };
 }
