@@ -140,8 +140,20 @@ function AccountActions({
     [user.first_name, user.last_name].filter(Boolean).join(" ") ||
     user.username;
 
+  
   return (
     <>
+      {user.role === "member" && (
+        <Link
+          href="/espace-fidele"
+          className={`rounded-lg bg-amber-400 font-bold text-emerald-950 transition hover:bg-amber-300 ${
+            compact ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"
+          }`}
+        >
+          Mon espace
+        </Link>
+      )}
+
       <Link
         href="/compte"
         className={`flex items-center gap-2 rounded-lg bg-white/10 font-semibold text-white transition hover:bg-white/20 ${

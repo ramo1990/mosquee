@@ -23,20 +23,3 @@ export default function MembersPage() {
     </ModuleGuard>
   );
 }
-
-
-// "use client";
-
-// import DashboardPagePlaceholder from "@/components/DashboardPagePlaceholder";
-// import ModuleGuard from "@/components/ModuleGuard";
-
-// export default function MembersPage() {
-//   return (
-//     <ModuleGuard module="members">
-//       <DashboardPagePlaceholder
-//         title="Gestion des fidèles"
-//         description="Gérez les fidèles de la mosquée, leurs informations personnelles et leur statut."
-//       />
-//     </ModuleGuard>
-//   );
-// }
